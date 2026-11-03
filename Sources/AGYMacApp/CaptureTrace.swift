@@ -1,6 +1,7 @@
 #if os(macOS)
 import Foundation
 import AppKit
+import SwiftUI
 
 @MainActor enum CaptureTrace {
     static func mark(_ text: String) {
