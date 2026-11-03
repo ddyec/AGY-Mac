@@ -5,7 +5,9 @@ import AGYMacCore
 @MainActor struct BuildView: View {
     @EnvironmentObject var store: MacStore
     @ObservedObject var local: LocalBuild
-    @State private var target = "local", confirm = false, loaded = false
+    @State private var target = "local"
+    @State private var confirm = false
+    @State private var loaded = false
     var body: some View {
         ScrollView {
             VStack(alignment:.leading,spacing:20) {

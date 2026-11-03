@@ -13,8 +13,10 @@ import AGYMacCore
 }
 @MainActor struct RootView: View {
     @EnvironmentObject var store: MacStore
-    @State private var search = "", visibility = NavigationSplitViewVisibility.all
-    @State private var renaming: Session?, title = ""
+    @State private var search = ""
+    @State private var visibility = NavigationSplitViewVisibility.all
+    @State private var renaming: Session?
+    @State private var title = ""
     @State private var deleting: Session?
     var body: some View {
         Group {
@@ -77,7 +79,10 @@ import AGYMacCore
 }
 @MainActor struct ConnectionView: View {
     @EnvironmentObject var store: MacStore
-    @State private var address = "https://agy.yectech.uk", key = "", reveal = false, network = false
+    @State private var address = "https://agy.yectech.uk"
+    @State private var key = ""
+    @State private var reveal = false
+    @State private var network = false
     var body: some View {
         VStack(spacing:22) {
             BrandMark(size:58)

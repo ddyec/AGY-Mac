@@ -7,7 +7,10 @@ import AGYMacCore
 
 @MainActor struct ChatView: View {
     @EnvironmentObject var store: MacStore
-    @State private var following = true, visibleCount = 80, dropping = false, workflows = false
+    @State private var following = true
+    @State private var visibleCount = 80
+    @State private var dropping = false
+    @State private var workflows = false
     @State private var scrollRequest = UUID()
     private var session: Session? { store.engine.selected }
     var body: some View {

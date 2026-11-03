@@ -30,8 +30,8 @@ fi
 export MACOSX_DEPLOYMENT_TARGET=13.0
 AGY_BUILD_ARGS=(--package-path "$AGY_PROJECT" --scratch-path "$AGY_CACHE/build" --configuration release --arch x86_64)
 echo '正在为 Intel Mac 编译原生界面与核心逻辑…'
-/usr/bin/xcrun swift test "${AGY_BUILD_ARGS[@]}" >>"$AGY_LOG" 2>&1
-/usr/bin/xcrun swift build "${AGY_BUILD_ARGS[@]}" --product AGY-Mac -Xlinker -rpath -Xlinker '@executable_path/../Frameworks' >>"$AGY_LOG" 2>&1
+/usr/bin/xcrun swift test "${AGY_BUILD_ARGS[@]}" 2>&1 | tee -a "$AGY_LOG"
+/usr/bin/xcrun swift build "${AGY_BUILD_ARGS[@]}" --product AGY-Mac -Xlinker -rpath -Xlinker '@executable_path/../Frameworks' 2>&1 | tee -a "$AGY_LOG"
 AGY_BIN="$(/usr/bin/xcrun swift build "${AGY_BUILD_ARGS[@]}" --show-bin-path)"
 AGY_EXE="$AGY_BIN/AGY-Mac"
 if [[ "$(/usr/bin/lipo -archs "$AGY_EXE")" != x86_64 ]]; then echo '产物架构不是纯 x86_64，已停止。'; exit 1; fi

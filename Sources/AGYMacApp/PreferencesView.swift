@@ -33,7 +33,10 @@ import AGYMacCore
 }
 @MainActor struct PreferencesView: View {
     @EnvironmentObject var store: MacStore
-    @State private var network = false, tasks = false, project = false, disconnect = false
+    @State private var network = false
+    @State private var tasks = false
+    @State private var project = false
+    @State private var disconnect = false
     var body: some View {
         ScrollView {
             VStack(alignment:.leading,spacing:20) {

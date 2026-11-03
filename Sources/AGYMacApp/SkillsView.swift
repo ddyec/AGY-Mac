@@ -11,7 +11,11 @@ enum WorkflowCatalog {
 }
 @MainActor struct SkillsView: View {
     @EnvironmentObject var store: MacStore
-    @State private var adding = false, name = "", prompt = "", file = "", discovered: [Skill] = []
+    @State private var adding = false
+    @State private var name = ""
+    @State private var prompt = ""
+    @State private var file = ""
+    @State private var discovered: [Skill] = []
     var body: some View {
         ScrollView {
             VStack(alignment:.leading,spacing:20) {

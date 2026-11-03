@@ -7,8 +7,15 @@ import AGYMacCore
     @EnvironmentObject var store: MacStore
     @Environment(\.dismiss) private var dismiss
     let picking: Bool, project: Bool
-    @State private var scope = "workspace", path = "", search = "", hidden = false, recent = false
-    @State private var listing: FileListing?, selection: String?, loading = false, failure: String?
+    @State private var scope = "workspace"
+    @State private var path = ""
+    @State private var search = ""
+    @State private var hidden = false
+    @State private var recent = false
+    @State private var listing: FileListing?
+    @State private var selection: String?
+    @State private var loading = false
+    @State private var failure: String?
     @State private var loadID = UUID()
     @State private var loadTask: Task<Void,Never>?
     private var selected: FileEntry? { listing?.entries.first { $0.id == selection } }

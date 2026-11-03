@@ -6,7 +6,10 @@ import Darwin
 import AGYMacCore
 
 @MainActor final class LocalBuild: ObservableObject {
-    @Published var folder = "", command = "", log = "", running = false
+    @Published var folder = ""
+    @Published var command = ""
+    @Published var log = ""
+    @Published var running = false
     private var process: Process?, logURL: URL?, poll: Task<Void,Never>?
     private var offset: UInt64 = 0
     func reset() { guard !running else { return }; folder = ""; command = ""; log = ""; logURL = nil; offset = 0 }

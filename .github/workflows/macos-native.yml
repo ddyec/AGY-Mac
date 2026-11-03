@@ -16,6 +16,12 @@ jobs:
           test "$(uname -m)" = x86_64
           sw_vers
           xcrun swift --version
+      - name: Restore native Swift compilation cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: ~/Library/Caches/AGY-Mac/Intel/build
+          key: macos26-intel-swift-${{ hashFiles('Package.swift') }}-${{ github.run_id }}
+          restore-keys: macos26-intel-swift-${{ hashFiles('Package.swift') }}-
       - name: Native tests, build and package
         id: build
         env:
@@ -59,3 +65,9 @@ jobs:
             ${{ runner.temp }}/agy-output/**/build-report.json
             ${{ runner.temp }}/agy-output/**/SHA256SUMS.txt
             ${{ runner.temp }}/agy-screenshots/**
+      - name: Save native compilation cache
+        if: always()
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: ~/Library/Caches/AGY-Mac/Intel/build
+          key: macos26-intel-swift-${{ hashFiles('Package.swift') }}-${{ github.run_id }}

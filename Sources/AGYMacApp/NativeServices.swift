@@ -41,7 +41,7 @@ final class Keychain {
 @MainActor enum NativeNetwork {
     static func configuration(_ settings: NetworkSettings) throws -> URLSessionConfiguration {
         try settings.validate()
-        let resolver: NWParameters.PrivacyContext.ResolverConfiguration? = settings.encryptedDNS ? settings.resolver.map { .https($0,serverAddresses:settings.bootstrap) } : nil
+        let resolver: NWParameters.PrivacyContext.ResolverConfiguration? = settings.encryptedDNS ? settings.resolver.map { .https($0,serverAddresses:settings.bootstrap.map { .hostPort(host:NWEndpoint.Host($0),port:.https) }) } : nil
         NWParameters.PrivacyContext.default.requireEncryptedNameResolution(settings.encryptedDNS,fallbackResolver:resolver)
         let config = URLSessionConfiguration.ephemeral
         if settings.proxy == "direct" { config.connectionProxyDictionary = [:] }
