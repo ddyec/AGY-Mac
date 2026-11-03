@@ -32,9 +32,18 @@ import AGYMacCore
                 }
                 let fullWindow = result == 0 && FileManager.default.fileExists(atPath:image.path)
                 CaptureTrace.mark("capture.screencapture "+name+" status=\(command.terminationStatus)")
-                guard fullWindow else { throw MacError.message("系统窗口截图失败，请查看 stage.log 与 capture.log。") }
-                guard let view = target.contentView else { throw MacError.message("窗口内容不存在。") }
-                captured.append(["name":name,"fullNativeWindow":fullWindow,"windowID":window.windowNumber,"width":Int(view.bounds.width),"height":Int(view.bounds.height),"theme":store.captureTheme ?? "system"])
+                guard let content = target.contentView else { throw MacError.message("窗口内容不存在。") }
+                let view = fullWindow ? content:(content.superview ?? content)
+                if !fullWindow {
+                    CaptureTrace.mark("capture.appkit.begin "+name)
+                    view.layoutSubtreeIfNeeded()
+                    guard let bitmap = view.bitmapImageRepForCachingDisplay(in:view.bounds) else { throw MacError.message("原生窗口位图不可用。") }
+                    view.cacheDisplay(in:view.bounds,to:bitmap)
+                    guard let bytes = bitmap.representation(using:.png,properties:[:]) else { throw MacError.message("原生窗口位图编码失败。") }
+                    try bytes.write(to:image)
+                    CaptureTrace.mark("capture.appkit.saved "+name)
+                }
+                captured.append(["name":name,"fullNativeWindow":fullWindow,"captureMethod":fullWindow ? "WindowServer":"AppKit cacheDisplay","windowID":window.windowNumber,"width":Int(view.bounds.width),"height":Int(view.bounds.height),"theme":store.captureTheme ?? "system"])
                 print("Captured \(name); native window=\(fullWindow)")
             }
             for theme in ["light","dark"] { store.captureTheme = theme; window.appearance = NSAppearance(named:theme == "light" ? .aqua:.darkAqua); try await capture("login-"+theme) }
