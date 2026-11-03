@@ -2,7 +2,7 @@ name: Intel macOS build and native UI capture
 on:
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 jobs:
   native:
     runs-on: macos-26-intel
@@ -54,6 +54,7 @@ jobs:
           PY
       - name: Upload app, screenshots and diagnostics
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: AGY-Mac-Intel-native-review
@@ -65,6 +66,24 @@ jobs:
             ${{ runner.temp }}/agy-output/**/build-report.json
             ${{ runner.temp }}/agy-output/**/SHA256SUMS.txt
             ${{ runner.temp }}/agy-screenshots/**
+      - name: Preserve review files in a draft release
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import os,pathlib,subprocess
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])
+          files=list((root/'agy-output').rglob('*.zip'))+list((root/'agy-output').rglob('build.log'))
+          shots=root/'agy-screenshots'
+          if shots.exists():
+              archive=root/'AGY-Mac-native-screenshots.zip'
+              subprocess.run(['/usr/bin/ditto','-c','-k','--keepParent',str(shots),str(archive)],check=True)
+              files.append(archive)
+          if files:
+              tag='native-review-'+os.environ['GITHUB_RUN_ID']
+              subprocess.run(['gh','release','create',tag,*map(str,files),'--repo',os.environ['GITHUB_REPOSITORY'],'--target',os.environ['GITHUB_SHA'],'--draft','--prerelease','--title','Native Intel UI review '+os.environ['GITHUB_RUN_ID'],'--notes','Private draft for native UI review; not yet visually approved.'],check=True)
+          PY
       - name: Save native compilation cache
         if: always()
         uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
