@@ -67,7 +67,7 @@ import AGYMacCore
                         .help(session.title)
                 }
             }.listStyle(.sidebar).disabled(store.busy)
-            HStack { Circle().fill(store.engine.selected?.running == true ? Color.orange:Color.green).frame(width:7,height:7); Text(store.engine.connectionLabel).font(.caption); Spacer(); Text("Intel").font(.caption2).foregroundStyle(.secondary) }.padding(10).background(Color.secondary.opacity(0.08),in:RoundedRectangle(cornerRadius:10))
+            HStack { Circle().fill(store.engine.selected?.running == true ? Color.orange:Color.green).frame(width:7,height:7); Text(store.captureEnabled ? "离线界面预览 · 示例数据":store.engine.connectionLabel).font(.caption); Spacer(); Text("Intel").font(.caption2).foregroundStyle(.secondary) }.padding(10).background(Color.secondary.opacity(0.08),in:RoundedRectangle(cornerRadius:10))
         }.padding(.horizontal,14).padding(.bottom,12)
     }
 }

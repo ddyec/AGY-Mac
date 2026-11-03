@@ -8,7 +8,7 @@ import AGYMacCore
 @main @MainActor struct AGYMacApp: App {
     @StateObject private var store = MacStore()
     var body: some Scene {
-        WindowGroup("AGY · Mac") { RootView().environmentObject(store).frame(minWidth: 780, minHeight: 560).task { await store.restore() }.preferredColorScheme(store.colorScheme) }
+        WindowGroup("AGY · Mac") { RootView().environmentObject(store).frame(minWidth: 780, minHeight: 560).task { await store.restore(); if store.captureEnabled { await UICapture.run(store) } }.preferredColorScheme(store.colorScheme) }
             .defaultSize(width: 1220, height: 820)
             .windowToolbarStyle(.unifiedCompact)
             .commands {

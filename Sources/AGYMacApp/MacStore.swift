@@ -14,6 +14,8 @@ private struct UnavailableStorage: StateStorage {
     func save(_ state: AppState) throws { throw MacError.message("保存状态不可用，请先处理钥匙串或 state.bin 的读取错误。") }
 }
 @MainActor final class MacStore: ObservableObject {
+    let captureEnabled = ProcessInfo.processInfo.arguments.contains("--capture-ui")
+    @Published var captureTheme: String?
     let localBuild = LocalBuild()
     private var buildScope = ""
     let engine: Workspace
@@ -33,11 +35,18 @@ private struct UnavailableStorage: StateStorage {
     private var draftKey = "", engineText = ""
     private var imageTasks: [String: Task<URL?,Never>] = [:]
     var connected: Bool { engine.connected }
-    var colorScheme: ColorScheme? { engine.profile.theme == "dark" ? .dark : engine.profile.theme == "light" ? .light : nil }
+    var colorScheme: ColorScheme? { let theme = captureTheme ?? engine.profile.theme; return theme == "dark" ? .dark : theme == "light" ? .light : nil }
     init() {
+        if ProcessInfo.processInfo.arguments.contains("--capture-ui") {
+            if let url = Bundle.main.url(forResource:"Mark",withExtension:"png") { VisualFixture.png = (try? Data(contentsOf:url)) ?? Data() }
+            engine = try! Workspace(storage:PreviewStorage(),watchEnabled:false,factory:{ credentials,_ in
+                let config = URLSessionConfiguration.ephemeral; config.protocolClasses = [VisualFixture.self]; return GatewayClient(credentials:credentials,configuration:config)
+            })
+        } else {
         do { engine = try Workspace(storage:Keychain.storage(),factory:{ credentials,settings in GatewayClient(credentials:credentials,configuration:try NativeNetwork.configuration(settings)) },saveCredentials:{ value in
             if let value { try Keychain.write(JSONEncoder().encode(value),account:"connection") } else { try Keychain.remove("connection") }
         }) } catch { engine = try! Workspace(storage:UnavailableStorage()); storageReady = false; self.error = "无法读取保存状态：\(error.localizedDescription)。原文件已保留，未覆盖。" }
+        }
         engine.changed = { [weak self] in self?.sync() }
     }
     func sync() {
@@ -70,7 +79,7 @@ private struct UnavailableStorage: StateStorage {
         Task { defer { busy = false; sync() }; do { try flushDraft(); try await operation() } catch { if !(error is CancellationError) { self.error = error.localizedDescription } } }
     }
     func restore() async {
-        guard !restored else { return }; restored = true; guard storageReady else { return }
+        guard !restored else { return }; restored = true; if captureEnabled { return }; guard storageReady else { return }
         do {
             if let data = try Keychain.read("connection") { let value = try JSONDecoder().decode(Credentials.self,from:data); busy = true; defer { busy = false }; try await engine.connect(value); sync() }
         } catch { self.error = error.localizedDescription }

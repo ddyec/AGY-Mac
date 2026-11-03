@@ -1,0 +1,61 @@
+name: Intel macOS build and native UI capture
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native:
+    runs-on: macos-26-intel
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Verify Intel Tahoe runner
+        run: |
+          test "$(uname -m)" = x86_64
+          sw_vers
+          xcrun swift --version
+      - name: Native tests, build and package
+        id: build
+        env:
+          AGY_MAC_OUTPUT_ROOT: ${{ runner.temp }}/agy-output
+          AGY_MAC_NO_LAUNCH: '1'
+        run: bash scripts/build-intel.sh
+      - name: Launch real app and capture its UI
+        env:
+          AGY_APP: ${{ steps.build.outputs.app }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/agy-screenshots"
+          "$AGY_APP/Contents/MacOS/AGY-Mac" --capture-ui --output "$RUNNER_TEMP/agy-screenshots" >"$RUNNER_TEMP/agy-screenshots/capture.log" 2>&1 &
+          AGY_PID=$!
+          for AGY_TICK in $(seq 1 150); do
+            if ! kill -0 "$AGY_PID" 2>/dev/null; then break; fi
+            sleep 1
+          done
+          if kill -0 "$AGY_PID" 2>/dev/null; then kill "$AGY_PID"; echo 'Native UI capture timed out'; exit 1; fi
+          wait "$AGY_PID"
+          test -f "$RUNNER_TEMP/agy-screenshots/capture.complete"
+          python3 - "$RUNNER_TEMP/agy-screenshots" <<'PY'
+          import json,sys,pathlib,struct
+          p=pathlib.Path(sys.argv[1]); r=json.loads((p/'capture-manifest.json').read_text())
+          assert len(r['captures']) >= 18
+          for c in r['captures']:
+              b=(p/(c['name']+'.png')).read_bytes()
+              assert b[:8]==b'\x89PNG\r\n\x1a\n'
+              w,h=struct.unpack('>II',b[16:24]); assert w>=700 and h>=500
+          print('Real native app captured',len(r['captures']),'scenes')
+          PY
+      - name: Upload app, screenshots and diagnostics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: AGY-Mac-Intel-native-review
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            ${{ runner.temp }}/agy-output/**/build.log
+            ${{ runner.temp }}/agy-output/**/*.zip
+            ${{ runner.temp }}/agy-output/**/build-report.json
+            ${{ runner.temp }}/agy-output/**/SHA256SUMS.txt
+            ${{ runner.temp }}/agy-screenshots/**

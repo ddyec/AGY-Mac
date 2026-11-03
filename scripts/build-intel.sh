@@ -18,7 +18,7 @@ if ! /usr/bin/xcrun --sdk macosx --show-sdk-path >/dev/null 2>&1; then
     exit 1
 fi
 AGY_CACHE="$HOME/Library/Caches/AGY-Mac/Intel"
-AGY_OUTPUT_ROOT="$HOME/Library/Application Support/AGY-Mac/Builds"
+AGY_OUTPUT_ROOT="${AGY_MAC_OUTPUT_ROOT:-$HOME/Library/Application Support/AGY-Mac/Builds}"
 mkdir -p "$AGY_CACHE" "$AGY_OUTPUT_ROOT"
 AGY_OUTPUT="$(mktemp -d "$AGY_OUTPUT_ROOT/Intel-XXXXXX")"
 AGY_LOG="$AGY_OUTPUT/build.log"
@@ -60,8 +60,11 @@ AGY_ZIP="$AGY_OUTPUT/AGY-Mac-$AGY_VERSION-macos-x86_64.zip"
 /usr/bin/ditto -c -k --keepParent "$AGY_APP" "$AGY_ZIP"
 /usr/bin/shasum -a 256 "$AGY_ZIP" >"$AGY_OUTPUT/SHA256SUMS.txt"
 printf '{"architecture":"x86_64","minimumMacOS":"13.0","builtOnMac":true,"nativeUIVisuallyVerified":false}\n' >"$AGY_OUTPUT/build-report.json"
+if [[ -n "${GITHUB_OUTPUT:-}" ]]; then printf 'app=%s\nzip=%s\noutput=%s\n' "$AGY_APP" "$AGY_ZIP" "$AGY_OUTPUT" >>"$GITHUB_OUTPUT"; fi
 echo "Intel Mac 应用已生成：$AGY_APP"
 echo "运行包：$AGY_ZIP"
 echo '现在启动新版。首次填写与 iPhone / PC 相同的服务器地址和连接密钥。'
-/usr/bin/open -R "$AGY_APP"
-/usr/bin/open "$AGY_APP"
+if [[ "${AGY_MAC_NO_LAUNCH:-0}" != 1 ]]; then
+    /usr/bin/open -R "$AGY_APP"
+    /usr/bin/open "$AGY_APP"
+fi
