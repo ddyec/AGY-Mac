@@ -6,7 +6,7 @@ import AGYMacCore
 @MainActor enum UICapture {
     private static var started = false
     static func run(_ store: MacStore) async {
-        guard !started else { return }; started = true
+        guard !started else { return }; started = true; CaptureTrace.mark("capture.begin")
         let args = ProcessInfo.processInfo.arguments
         let index = args.firstIndex(of:"--output")
         let path = index.flatMap { $0 + 1 < args.count ? args[$0+1]:nil } ?? FileManager.default.temporaryDirectory.appendingPathComponent("AGY-Mac-Captures").path
@@ -16,21 +16,21 @@ import AGYMacCore
             NSApp.setActivationPolicy(.regular); NSApp.activate(ignoringOtherApps:true)
             try await Task.sleep(nanoseconds:800_000_000)
             guard let window = NSApp.windows.first(where:{$0.isVisible && $0.canBecomeMain}) else { throw MacError.message("没有可截图的原生窗口。") }
+            CaptureTrace.mark("capture.window=\(window.windowNumber)")
             window.setContentSize(NSSize(width:1220,height:820)); window.center(); window.makeKeyAndOrderFront(nil)
             var captured: [[String:Any]] = []
             func capture(_ name: String) async throws {
-                try await Task.sleep(nanoseconds:900_000_000); window.displayIfNeeded()
+                try await Task.sleep(nanoseconds:900_000_000)
+                CaptureTrace.mark("capture.start "+name)
+                let target = name.hasPrefix("model-dialog") ? (window.attachedSheet ?? window):window
                 let image = folder.appendingPathComponent(name+".png")
-                let content = folder.appendingPathComponent(name+"-content.png")
-                guard let view = window.contentView, let rep = view.bitmapImageRepForCachingDisplay(in:view.bounds) else { throw MacError.message("原生内容位图不可用。") }
-                view.cacheDisplay(in:view.bounds,to:rep)
-                guard let bytes = rep.representation(using:.png,properties:[:]) else { throw MacError.message("无法编码原生窗口内容。") }
-                try bytes.write(to:content)
-                let command = Process(); command.executableURL = URL(fileURLWithPath:"/usr/sbin/screencapture"); command.arguments = ["-x","-o","-l",String(window.windowNumber),image.path]
-                let error = Pipe(); command.standardError = error
+                let command = Process(); command.executableURL = URL(fileURLWithPath:"/usr/sbin/screencapture"); command.arguments = ["-x","-o","-l",String(target.windowNumber),image.path]
+                command.standardError = FileHandle.standardError
                 try command.run(); command.waitUntilExit()
                 let fullWindow = command.terminationStatus == 0 && FileManager.default.fileExists(atPath:image.path)
-                if !fullWindow { try bytes.write(to:image) }
+                CaptureTrace.mark("capture.screencapture "+name+" status=\(command.terminationStatus)")
+                guard fullWindow else { throw MacError.message("系统窗口截图失败，请查看 stage.log 与 capture.log。") }
+                guard let view = target.contentView else { throw MacError.message("窗口内容不存在。") }
                 captured.append(["name":name,"fullNativeWindow":fullWindow,"windowID":window.windowNumber,"width":Int(view.bounds.width),"height":Int(view.bounds.height),"theme":store.captureTheme ?? "system"])
                 print("Captured \(name); native window=\(fullWindow)")
             }

@@ -37,6 +37,7 @@ private struct UnavailableStorage: StateStorage {
     var connected: Bool { engine.connected }
     var colorScheme: ColorScheme? { let theme = captureTheme ?? engine.profile.theme; return theme == "dark" ? .dark : theme == "light" ? .light : nil }
     init() {
+        CaptureTrace.mark("store.init")
         if ProcessInfo.processInfo.arguments.contains("--capture-ui") {
             if let url = Bundle.main.url(forResource:"Mark",withExtension:"png") { VisualFixture.png = (try? Data(contentsOf:url)) ?? Data() }
             engine = try! Workspace(storage:PreviewStorage(),watchEnabled:false,factory:{ credentials,_ in
@@ -47,7 +48,7 @@ private struct UnavailableStorage: StateStorage {
             if let value { try Keychain.write(JSONEncoder().encode(value),account:"connection") } else { try Keychain.remove("connection") }
         }) } catch { engine = try! Workspace(storage:UnavailableStorage()); storageReady = false; self.error = "无法读取保存状态：\(error.localizedDescription)。原文件已保留，未覆盖。" }
         }
-        engine.changed = { [weak self] in self?.sync() }
+        engine.changed = { [weak self] in self?.sync() }; CaptureTrace.mark("store.ready")
     }
     func sync() {
         objectWillChange.send()

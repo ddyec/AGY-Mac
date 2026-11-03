@@ -6,9 +6,10 @@ import AGYMacCore
 #error("AGY-Mac is an Intel x86_64 app. Build with --arch x86_64.")
 #endif
 @main @MainActor struct AGYMacApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @StateObject private var store = MacStore()
     var body: some Scene {
-        WindowGroup("AGY · Mac") { RootView().environmentObject(store).frame(minWidth: 780, minHeight: 560).task { await store.restore(); if store.captureEnabled { await UICapture.run(store) } }.preferredColorScheme(store.colorScheme) }
+        WindowGroup("AGY · Mac") { RootView().environmentObject(store).frame(minWidth: 780, minHeight: 560).task { CaptureTrace.mark("root.task"); await store.restore(); if store.captureEnabled { await UICapture.run(store) } }.preferredColorScheme(store.colorScheme) }
             .defaultSize(width: 1220, height: 820)
             .windowToolbarStyle(.unifiedCompact)
             .commands {

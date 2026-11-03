@@ -33,7 +33,7 @@ jobs:
           AGY_APP: ${{ steps.build.outputs.app }}
         run: |
           mkdir -p "$RUNNER_TEMP/agy-screenshots"
-          "$AGY_APP/Contents/MacOS/AGY-Mac" --capture-ui --output "$RUNNER_TEMP/agy-screenshots" >"$RUNNER_TEMP/agy-screenshots/capture.log" 2>&1 &
+          open -n -W --stdout "$RUNNER_TEMP/agy-screenshots/capture.log" --stderr "$RUNNER_TEMP/agy-screenshots/capture-error.log" "$AGY_APP" --args --capture-ui --output "$RUNNER_TEMP/agy-screenshots" &
           AGY_PID=$!
           for AGY_TICK in $(seq 1 150); do
             if ! kill -0 "$AGY_PID" 2>/dev/null; then break; fi
@@ -49,7 +49,7 @@ jobs:
           for c in r['captures']:
               b=(p/(c['name']+'.png')).read_bytes()
               assert b[:8]==b'\x89PNG\r\n\x1a\n'
-              w,h=struct.unpack('>II',b[16:24]); assert w>=700 and h>=500
+              w,h=struct.unpack('>II',b[16:24]); assert w>=(500 if c['name'].startswith('model-dialog') else 700) and h>=500
           print('Real native app captured',len(r['captures']),'scenes')
           PY
       - name: Upload app, screenshots and diagnostics
