@@ -1,0 +1,19 @@
+{
+  "version": "1.0.0-beta.1",
+  "architecture": "x86_64",
+  "minimumMacOS": "13.0",
+  "userOS": "macOS 26 Tahoe",
+  "ui": "SwiftUI / AppKit",
+  "baselinePC": "c802423",
+  "baselineIPhone": "ab0f1d7",
+  "nativeMacBuildCompleted": false,
+  "nativeMacUIValidated": false,
+  "macSyntaxParsed": true,
+  "gatewayReadOnlyHTTP": 200,
+  "modelTasksSent": 0,
+  "actionsUsed": false,
+  "releaseKind": "source + Intel local builder; no prebuilt app",
+  "coreTestsPassed": 18,
+  "createdUTC": "2026-11-03T00:54:40.880868+00:00",
+  "mockStateTestsBackgroundWatch": false
+}
