@@ -26,8 +26,11 @@ import AGYMacCore
                 let image = folder.appendingPathComponent(name+".png")
                 let command = Process(); command.executableURL = URL(fileURLWithPath:"/usr/sbin/screencapture"); command.arguments = ["-x","-o","-l",String(target.windowNumber),image.path]
                 command.standardError = FileHandle.standardError
-                try command.run(); command.waitUntilExit()
-                let fullWindow = command.terminationStatus == 0 && FileManager.default.fileExists(atPath:image.path)
+                let result: Int32 = try await withCheckedThrowingContinuation { continuation in
+                    command.terminationHandler = { process in continuation.resume(returning:process.terminationStatus) }
+                    do { try command.run() } catch { continuation.resume(throwing:error) }
+                }
+                let fullWindow = result == 0 && FileManager.default.fileExists(atPath:image.path)
                 CaptureTrace.mark("capture.screencapture "+name+" status=\(command.terminationStatus)")
                 guard fullWindow else { throw MacError.message("系统窗口截图失败，请查看 stage.log 与 capture.log。") }
                 guard let view = target.contentView else { throw MacError.message("窗口内容不存在。") }

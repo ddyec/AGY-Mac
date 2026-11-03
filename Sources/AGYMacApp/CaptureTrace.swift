@@ -13,9 +13,51 @@ import AppKit
     }
 }
 @MainActor final class AppDelegate: NSObject, NSApplicationDelegate {
+    private var store: MacStore?
+    private var window: NSWindow?
+    private var settings: NSWindow?
     func applicationDidFinishLaunching(_ notification: Notification) {
-        CaptureTrace.mark("application.didFinishLaunching windows=\(NSApp.windows.count)")
-        NSApp.setActivationPolicy(.regular); NSApp.activate(ignoringOtherApps:true)
+        CaptureTrace.mark("application.didFinishLaunching")
+        let store = MacStore(); self.store = store
+        let controller = NSHostingController(rootView:RootView().environmentObject(store))
+        let window = NSWindow(contentViewController:controller)
+        window.title = "AGY · Mac"; window.styleMask = [.titled,.closable,.miniaturizable,.resizable,.fullSizeContentView]
+        window.titlebarAppearsTransparent = true; window.toolbarStyle = .unifiedCompact
+        window.setContentSize(NSSize(width:1220,height:820)); window.minSize = NSSize(width:800,height:600)
+        window.isReleasedWhenClosed = false; self.window = window
+        installMenu(); window.center(); window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps:true)
+        CaptureTrace.mark("application.windowCreated id=\(window.windowNumber)")
+        Task { await store.restore(); if store.captureEnabled { await UICapture.run(store) } }
+    }
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
+    func applicationWillTerminate(_ notification: Notification) { store?.localBuild.stop() }
+    private func installMenu() {
+        let main = NSMenu(), app = NSMenu(), file = NSMenu(), navigation = NSMenu(), windows = NSMenu()
+        let appItem = NSMenuItem(); appItem.submenu = app; main.addItem(appItem)
+        app.addItem(item("关于 AGY · Mac",#selector(about),"")); app.addItem(.separator())
+        app.addItem(item("设置…",#selector(openSettings),",")); app.addItem(.separator())
+        app.addItem(NSMenuItem(title:"退出 AGY · Mac",action:#selector(NSApplication.terminate(_:)),keyEquivalent:"q"))
+        let fileItem = NSMenuItem(title:"文件",action:nil,keyEquivalent:""); fileItem.submenu = file; main.addItem(fileItem)
+        file.addItem(item("新建对话",#selector(newConversation),"n")); file.addItem(item("文件与产物",#selector(showFiles),"2"))
+        let navigationItem = NSMenuItem(title:"AGY",action:nil,keyEquivalent:""); navigationItem.submenu = navigation; main.addItem(navigationItem)
+        navigation.addItem(item("模型与任务配置…",#selector(taskOptions),"k")); navigation.addItem(item("刷新会话",#selector(refresh),"r")); navigation.addItem(item("停止本机构建",#selector(stopBuild),"."))
+        let windowItem = NSMenuItem(title:"窗口",action:nil,keyEquivalent:""); windowItem.submenu = windows; main.addItem(windowItem)
+        windows.addItem(NSMenuItem(title:"最小化",action:#selector(NSWindow.performMiniaturize(_:)),keyEquivalent:"m")); NSApp.mainMenu = main; NSApp.windowsMenu = windows
+    }
+    private func item(_ title: String,_ action: Selector,_ key: String) -> NSMenuItem { let item = NSMenuItem(title:title,action:action,keyEquivalent:key); item.target = self; return item }
+    @objc private func newConversation() { guard let store,store.connected else { return }; store.run { try await store.newConversation() } }
+    @objc private func showFiles() { if store?.connected == true { store?.page = .files } }
+    @objc private func taskOptions() { if store?.connected == true { store?.showTaskOptions = true } }
+    @objc private func refresh() { guard let store,store.connected else { return }; store.run { try await store.reload() } }
+    @objc private func stopBuild() { store?.localBuild.stop() }
+    @objc private func about() { NSApp.orderFrontStandardAboutPanel(nil) }
+    @objc private func openSettings() {
+        guard let store else { return }
+        if let settings { settings.makeKeyAndOrderFront(nil); return }
+        let controller = NSHostingController(rootView:PreferencesView().environmentObject(store).frame(width:680,height:720).preferredColorScheme(store.colorScheme))
+        let win = NSWindow(contentViewController:controller); win.title = "AGY · Mac 设置"; win.styleMask = [.titled,.closable]; win.isReleasedWhenClosed = false
+        settings = win; win.center(); win.makeKeyAndOrderFront(nil)
     }
 }
 #endif

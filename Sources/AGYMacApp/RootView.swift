@@ -42,6 +42,7 @@ import AGYMacCore
                 }
             } else { ConnectionView() }
         }
+        .preferredColorScheme(store.colorScheme)
         .onReceive(NotificationCenter.default.publisher(for:NSApplication.willTerminateNotification)) { _ in store.localBuild.stop() }
         .sheet(isPresented:$store.showTaskOptions) { TaskOptionsView().environmentObject(store) }
         .sheet(isPresented:$store.showReferences) { FilesView(picking:true,project:store.choosingProject).environmentObject(store).frame(minWidth:680,minHeight:560).padding(20) }
