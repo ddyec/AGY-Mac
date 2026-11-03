@@ -14,7 +14,6 @@ import AGYMacCore
 @MainActor struct RootView: View {
     @EnvironmentObject var store: MacStore
     @State private var search = ""
-    @State private var visibility = NavigationSplitViewVisibility.all
     @State private var renaming: Session?
     @State private var title = ""
     @State private var deleting: Session?

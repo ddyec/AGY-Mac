@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 AGY_PROJECT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-AGY_VERSION="1.0.0-beta.1"
+AGY_VERSION="1.0.0-beta.2"
 if [[ "$(uname -s)" != Darwin ]]; then
     echo '请在 Intel Mac 上运行，不能在 Linux / WSL 上生成原生 macOS 应用。'
     exit 1

@@ -2,6 +2,7 @@
 import Foundation
 import AppKit
 import SwiftUI
+import Combine
 
 @MainActor enum CaptureTrace {
     static func mark(_ text: String) {
@@ -17,6 +18,7 @@ import SwiftUI
     private var store: MacStore?
     private var window: NSWindow?
     private var settings: NSWindow?
+    private var appearanceObserver: AnyCancellable?
     func applicationDidFinishLaunching(_ notification: Notification) {
         CaptureTrace.mark("application.didFinishLaunching")
         let store = MacStore(); self.store = store
@@ -26,10 +28,17 @@ import SwiftUI
         window.isOpaque = true; window.backgroundColor = .windowBackgroundColor; window.titleVisibility = .hidden; window.titlebarAppearsTransparent = false; window.toolbarStyle = .unifiedCompact
         window.setContentSize(NSSize(width:1220,height:820)); window.minSize = NSSize(width:800,height:600)
         window.isReleasedWhenClosed = false; self.window = window
+        appearanceObserver = store.objectWillChange.sink { [weak self] _ in DispatchQueue.main.async { self?.updateAppearance() } }
+        updateAppearance()
         installMenu(); window.center(); window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps:true)
         CaptureTrace.mark("application.windowCreated id=\(window.windowNumber)")
         Task { await store.restore(); if store.captureEnabled { await UICapture.run(store) } }
+    }
+    private func updateAppearance() {
+        guard let store else { return }
+        let appearance: NSAppearance? = store.colorScheme == .dark ? NSAppearance(named:.darkAqua):store.colorScheme == .light ? NSAppearance(named:.aqua):nil
+        window?.appearance = appearance; settings?.appearance = appearance
     }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
     func applicationWillTerminate(_ notification: Notification) { store?.localBuild.stop() }
@@ -58,7 +67,7 @@ import SwiftUI
         if let settings { settings.makeKeyAndOrderFront(nil); return }
         let controller = NSHostingController(rootView:PreferencesView().environmentObject(store).frame(width:680,height:720).preferredColorScheme(store.colorScheme))
         let win = NSWindow(contentViewController:controller); win.title = "AGY · Mac 设置"; win.styleMask = [.titled,.closable]; win.isReleasedWhenClosed = false
-        settings = win; win.center(); win.makeKeyAndOrderFront(nil)
+        settings = win; updateAppearance(); win.center(); win.makeKeyAndOrderFront(nil)
     }
 }
 #endif

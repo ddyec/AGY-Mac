@@ -4,21 +4,21 @@
 
 ## 下载与运行
 
-从 [Releases](https://github.com/ddyec/AGY-Mac/releases) 下载 **Intel-Builder.zip**，完整解压后双击 **Build-Intel.command**。
+在 [Releases](https://github.com/ddyec/AGY-Mac/releases) 下载 **macos-x86_64.zip**，完整解压后把 `AGY-Mac.app` 放到“应用程序”并打开。运行包由 GitHub Actions 的 **macOS 26 Intel** 机器真实编译，主程序仅包含 x86_64；最低部署目标为 macOS 13。
 
-这是**本机构建包**：它会在你的 Intel Mac 上编译原生应用，验证产物只有 x86_64，生成 `.app` 和运行 ZIP，然后打开 Finder 并启动。此仓库初版没有在 Linux 上伪造 macOS 二进制；最终原生编译需由 Mac 完成。没有使用 GitHub Actions。
+应用使用 ad-hoc 签名，尚无 Developer ID 公证。若 macOS 拦截下载应用，可在系统“隐私与安全性”中允许打开这个应用；无需关闭系统安全机制。也可下载 **Intel-Builder.zip** 在自己的 Intel Mac 上双击 `Build-Intel.command`，使用 Apple Command Line Tools 构建，源码包同样提供。
 
-需要 Apple Command Line Tools。尚未安装时脚本会打开 Apple 安装入口，安装完成后重新双击即可；也可以先执行：
-
-```bash
-xcode-select --install
-```
-
-如果 Finder 不允许直接运行下载的脚本，在“终端”输入 `/bin/bash `（末尾保留空格），把 `Build-Intel.command` 拖进窗口再按回车；不需要关闭 Gatekeeper。
-
-构建输出在 `~/Library/Application Support/AGY-Mac/Builds/Intel-.../`，包括 `AGY-Mac.app`、Intel 运行包、`build.log` 和构建报告。SDK 编译缓存会复用。你可以把生成的 `.app` 拖到“应用程序”文件夹；脚本不会覆盖已安装的应用。
+本机构建输出在 `~/Library/Application Support/AGY-Mac/Builds/Intel-.../`，不会覆盖已安装的版本。缺少 Apple Command Line Tools 时脚本会打开安装入口；完成后重新运行即可。
 
 首次连接填写与 iPhone / PC 相同的 **HTTPS 服务器地址和连接密钥**，不是 Google 密码。密钥存储在 macOS 钥匙串。草稿、设置、队列与待确认消息使用 AES-GCM 加密，密钥也在钥匙串中；不同服务器账号分别保存。
+
+## 原生界面检查
+
+用户授权后新增手动运行的 Intel Tahoe Actions：原生编译、18 项测试、应用启动与 18 个离线场景取图。预览不读取钥匙串、不连接生产服务器；这部分使用明确标注的示例数据。
+
+CI 的 WindowServer 抓屏不可用时，使用已显示窗口的 AppKit `cacheDisplay` 绘制取图，捕获方式记录在 `capture-manifest.json`。图片来自实际 SwiftUI/AppKit 视图；系统玻璃、窗口阴影等效果可能与桌面抓屏不同。源码和截图结果都不会把自动取图等同于完整交互验收。
+
+人工查看首轮图片后，修正了空白侧栏呈现、深色顶栏白块、重复页标题和缺失输入提示。后续截图与记录见 [界面检查记录](docs/UI_REVIEW.md)。
 
 ## 已实现
 

@@ -23,6 +23,6 @@
 
 Mac 构建命令按用户确认执行。停止操作会尽力终止当时发现的子进程与启动命令，独立脱离父进程运行的守护程序不由此管理。项目快照由网关生成；该协议不保证保留原工程的可执行权限，需要时用 `bash build.sh` 或在本机按项目说明设置权限。
 
-首版未提供自动更新、Developer ID 公证、无人值守远程构建调度或托管 Docker/虚拟机。不会自动改变系统网络、安装容器或修改服务器账号。
+当前未提供自动更新、Developer ID 公证、无人值守远程构建调度或托管 Docker/虚拟机。不会自动改变系统网络、安装容器或修改服务器账号。
 
 Apple 加密 DNS 的系统优先级说明：[PrivacyContext](https://developer.apple.com/documentation/network/nwparameters/privacycontext/requireencryptednameresolution(_:fallbackresolver:))、[WWDC20](https://developer.apple.com/videos/play/wwdc2020/10047/)。

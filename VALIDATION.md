@@ -1,19 +1,21 @@
-# 验证记录与边界
+# Native macOS Actions 与视觉检查
 
-## 已实际执行
+按用户本次明确授权，已新增 `macos-26-intel` 手动 Actions，覆盖真实 Apple SDK 编译、18 项核心测试、Intel Mach-O 校验、应用组装与签名，以及实际窗口启动。不能再用此前 Linux-only 的记录代表当前状态。
 
-- Swift 6.0.3 / Linux ARM64 编译共享 `AGYMacCore` 与 C/zlib 边界层。
-- **18 项核心测试通过**：HTTPS origin、请求头凭据隔离、重定向/502 拒绝、模型和强度、完整文件夹引用、UTF-8/CRLF/BOM SSE、加密持久化失败保留、账号隔离、未知发送状态、显式重试原请求号、队列/即时引导、快照路径与 Unicode 冲突、压缩/二进制提取。
-- 使用 Swift 编译器 `-frontend -parse -target x86_64-apple-macosx13.0` 解析全部实际 macOS UI 分支，不使用假的 SwiftUI 类型或替代界面。
-- Bash 构建脚本语法、Info.plist 配置、包内源码哈希、可执行权限与排除密钥检查。
-- 以 Mac 客户端 User-Agent 对现有网关 `/v1/status` 做一次只读验证：HTTP 200、协议 1、文件浏览能力存在。未打印密钥、未发送模型任务、未改服务器。
+## 已实际发现并修复
 
-模拟 HTTP 传输的状态机测试关闭后台观察任务，避免 Linux URLProtocol 在取消模拟流时死锁；SSE 字节帧独立测试。真实 Apple URLSession 流、后台自动出队及取消行为仍需要 Mac 集成验证。
+- SwiftUI `@State` / Combine `@Published` 多变量声明造成的语义编译错误；拆分为独立属性。
+- 原生 DoH API 的 bootstrap 参数需要 `[NWEndpoint]`；按实际 SDK 类型修正。
+- 仅依赖自动场景启动时没有创建窗口；改为 AppKit 明确创建 `NSWindow` 和 `NSHostingController`，提供原生菜单与关闭行为。
+- runner 的 WindowServer 屏幕捕获失败；改用窗口自身 AppKit 渲染并记录捕获方法。
+- 人工查看首轮原生渲染图，发现侧栏/玻璃区域未呈现、深色顶栏白块、重复标题及缺失输入提示；调整为明确的原生分栏与背景、统一内容顶栏，并补提示。
 
-## 必须在 Mac 完成
+18 个场景涵盖登录、欢迎页、聊天、模型弹窗、文件、构建、设置、技能的浅/深色，以及窄窗口和审批/队列。所有场景使用离线假数据与内存状态，不读取真实凭据；生产网关和账号未改动。
 
-本服务器没有 macOS SDK，也没有运行 macOS 26 Tahoe。**SwiftUI/AppKit 的完整类型编译、链接、钥匙串/AES 运行、加密 DNS、原生窗口显示、Finder 文件选择和本机构建的端到端验收尚未完成。** 语法解析及 Linux 核心编译不能替代这些步骤。
+## 验证边界
 
-Release 提供源码和 Intel 本机构建入口，不将 Linux ELF、语法检查结果或中间对象伪装成 `.app`。`Build-Intel.command` 在实际 Intel Mac 上编译、检查 Mach-O 架构、组装图标和应用、ad-hoc 签名并生成运行 ZIP；成功构建报告明确保留视觉验收未完成标志。
+实际验证环境为 Intel macOS 26；macOS 13 为部署目标，未在 macOS 13 实机运行。界面快照为 AppKit 窗口渲染，不是 WindowServer 桌面抓屏。钥匙串真实登录、用户网络下的 DoH/代理、实际审批任务、长时 SSE/后台出队及真实本机工程构建仍需用户环境验证。
 
-没有创建 GitHub Actions 工作流，没有使用 Actions。首版没有 Developer ID 签名或公证，不宣称已通过 Gatekeeper 分发验收。
+应用为 ad-hoc 签名，未做 Developer ID 公证。Actions 成功、18 项测试通过及截图人工检查不等于所有交互均已验收。
+
+历史 Linux 核心测试还覆盖快照边界、账号隔离和未知发送状态；HTTP 模拟测试关闭背景观察任务，SSE 字节帧单独验证。
