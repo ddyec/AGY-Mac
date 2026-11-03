@@ -11,7 +11,6 @@ import AGYMacCore
     var body: some View {
         ScrollView {
             VStack(alignment:.leading,spacing:20) {
-                Text("混合构建").font(.title2.weight(.semibold))
                 Text("Mac 项目在这台 Intel Mac 上构建，网页与服务端任务留在服务器。").foregroundStyle(.secondary)
                 GroupBox("执行位置") { VStack(alignment:.leading,spacing:14) {
                     Picker("目标",selection:$target) { Text("本机 · Intel Mac").tag("local"); Text("服务器 · 网页 / 服务端").tag("server") }.pickerStyle(.segmented)

@@ -65,7 +65,8 @@ import AGYMacCore
             if !(session?.approvals ?? []).isEmpty { ScrollView { VStack { ForEach(session?.approvals ?? []) { approval in ApprovalView(approval:approval) } } }.frame(maxHeight:190) }
             VStack(alignment:.leading,spacing:8) {
                 if !store.engine.draft.references.isEmpty { ScrollView(.horizontal) { HStack { ForEach(store.engine.draft.references) { item in Button { store.run { try store.engine.removeReference(item.path) } } label: { Label("@ " + item.label + "  ×",systemImage:item.directory ? "folder":"doc") }.buttonStyle(.bordered).controlSize(.small) } } } }
-                TextEditor(text:$store.text).font(.body).scrollContentBackground(.hidden).frame(height:82).disabled(store.busy || store.engine.pending != nil)
+                TextEditor(text:$store.text).font(.body).scrollContentBackground(.hidden).frame(height:64).disabled(store.busy || store.engine.pending != nil)
+                    .overlay(alignment:.topLeading) { if store.text.isEmpty { Text("描述任务，或输入 @ 引用文件与文件夹…").font(.body).foregroundStyle(.tertiary).padding(.top,8).padding(.leading,4).allowsHitTesting(false) } }
                     .onChange(of:store.text) { text in if text.hasSuffix("@"), !store.showReferences { store.mention() }; if text == "/" { workflows = true } }
                 HStack(spacing:8) {
                     Button { store.run { try await store.upload() } } label: { Image(systemName:"paperclip") }.help("上传文件")

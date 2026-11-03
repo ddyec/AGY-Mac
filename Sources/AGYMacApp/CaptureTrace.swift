@@ -22,8 +22,8 @@ import SwiftUI
         let store = MacStore(); self.store = store
         let controller = NSHostingController(rootView:RootView().environmentObject(store))
         let window = NSWindow(contentViewController:controller)
-        window.title = "AGY · Mac"; window.styleMask = [.titled,.closable,.miniaturizable,.resizable,.fullSizeContentView]
-        window.titlebarAppearsTransparent = true; window.toolbarStyle = .unifiedCompact
+        window.title = "AGY · Mac"; window.styleMask = [.titled,.closable,.miniaturizable,.resizable]
+        window.isOpaque = true; window.backgroundColor = .windowBackgroundColor; window.titleVisibility = .hidden; window.titlebarAppearsTransparent = false; window.toolbarStyle = .unifiedCompact
         window.setContentSize(NSSize(width:1220,height:820)); window.minSize = NSSize(width:800,height:600)
         window.isReleasedWhenClosed = false; self.window = window
         installMenu(); window.center(); window.makeKeyAndOrderFront(nil)

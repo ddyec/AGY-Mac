@@ -25,7 +25,7 @@ import AGYMacCore
     }
     var body: some View {
         VStack(alignment:.leading,spacing:14) {
-            HStack { Text(project ? "选择项目":picking ? "引用工作文件":"文件与产物").font(.title2.weight(.semibold)); Spacer(); if loading { ProgressView().controlSize(.small) }; if picking { Button("完成") { dismiss() }.keyboardShortcut(.cancelAction) } }
+            if picking { HStack { Text(project ? "选择项目":"引用工作文件").font(.title2.weight(.semibold)); Spacer(); if loading { ProgressView().controlSize(.small) }; if picking { Button("完成") { dismiss() }.keyboardShortcut(.cancelAction) } } }
             HStack {
                 Button { path = ""; reload() } label: { Image(systemName:"house") }.help("项目根目录")
                 Button { path = path.split(separator:"/").dropLast().joined(separator:"/"); reload() } label: { Image(systemName:"chevron.up") }.disabled(path.isEmpty)

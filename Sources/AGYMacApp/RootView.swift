@@ -21,8 +21,18 @@ import AGYMacCore
     var body: some View {
         Group {
             if store.connected {
-                NavigationSplitView(columnVisibility:$visibility) { sidebar.navigationSplitViewColumnWidth(min:220,ideal:248,max:310) } detail: {
+                HSplitView {
+                    sidebar.frame(minWidth:228,idealWidth:248,maxWidth:280,maxHeight:.infinity)
+                        .background(Color(nsColor:.windowBackgroundColor))
                     VStack(spacing:0) {
+                        HStack(spacing:12) {
+                            Text(store.page == .chat ? store.engine.selected?.title ?? "新对话":store.page.title).font(.title3.weight(.semibold)).lineLimit(1)
+                            Spacer()
+                            if store.busy { ProgressView().controlSize(.small) }
+                            Button { store.chooseProject() } label: { Label(URL(fileURLWithPath:store.engine.settings.workspace).lastPathComponent,systemImage:"folder") }.controlSize(.small).help("切换工作项目")
+                            if store.page == .chat { Button { store.showTaskOptions = true } label: { Image(systemName:"slider.horizontal.3") }.controlSize(.small).help("模型与任务配置") }
+                        }.padding(.horizontal,24).padding(.vertical,14)
+                        Divider()
                         if let error = store.error { NoticeBanner(text:error) { store.error = nil } }
                         if let warning = store.engine.streamError { NoticeBanner(text:warning) {} }
                         switch store.page {
@@ -32,13 +42,8 @@ import AGYMacCore
                         case .skills: SkillsView()
                         case .settings: PreferencesView()
                         }
-                    }
-                    .navigationTitle(store.page == .chat ? store.engine.selected?.title ?? "新对话" : store.page.title)
-                    .toolbar { ToolbarItemGroup(placement:.primaryAction) {
-                        if store.busy { ProgressView().controlSize(.small) }
-                        Button { store.chooseProject() } label: { Label(URL(fileURLWithPath:store.engine.settings.workspace).lastPathComponent,systemImage:"folder") }.help("切换工作项目")
-                        if store.page == .chat { Button { store.showTaskOptions = true } label: { Image(systemName:"slider.horizontal.3") }.help("模型与任务配置") }
-                    } }
+                    }.frame(minWidth:500,maxWidth:.infinity,maxHeight:.infinity)
+                        .background(Color(nsColor:.textBackgroundColor))
                 }
             } else { ConnectionView() }
         }
@@ -60,7 +65,15 @@ import AGYMacCore
         VStack(spacing:14) {
             HStack(spacing:10) { BrandMark(); Text("AGY").font(.title2.weight(.semibold)); Spacer(); Text("Mac").font(.caption).foregroundStyle(.secondary) }.padding(.horizontal,8).padding(.top,16)
             Button { store.run { try await store.newConversation() } } label: { HStack { Image(systemName:"plus"); Text("新建对话"); Spacer(); Text("⌘N").foregroundStyle(.secondary) }.padding(.vertical,7) }.buttonStyle(.bordered).disabled(store.busy)
-            List(selection:Binding<Page?>(get:{store.page},set:{if let value = $0 { store.page = value }})) { ForEach(Page.allCases) { page in Label(page.title,systemImage:page.icon).tag(page) } }.listStyle(.sidebar).frame(height:180)
+            VStack(spacing:4) {
+                ForEach(Page.allCases) { page in
+                    Button { store.page = page } label: {
+                        HStack(spacing:10) { Image(systemName:page.icon).frame(width:20); Text(page.title).lineLimit(1); Spacer() }
+                            .font(.system(size:13,weight:store.page == page ? .semibold:.regular)).padding(.horizontal,12).padding(.vertical,9)
+                            .contentShape(Rectangle())
+                    }.buttonStyle(.plain).background(store.page == page ? Color.accentColor.opacity(0.13):Color.clear,in:RoundedRectangle(cornerRadius:9))
+                }
+            }
             HStack { Text("最近对话").font(.caption.weight(.medium)).foregroundStyle(.secondary); Spacer(); Button { store.run { try await store.reload() } } label: { Image(systemName:"arrow.clockwise") }.buttonStyle(.plain).help("刷新会话") }
             TextField("搜索对话",text:$search).textFieldStyle(.roundedBorder)
             List(selection:Binding(get:{store.engine.selected?.id},set:{ id in if let id, let session = store.engine.sessions.first(where:{$0.id == id}) { store.select(session) } })) {
@@ -69,7 +82,7 @@ import AGYMacCore
                         .contextMenu { Button("打开") { store.select(session) }; Button("重命名…") { title = session.title; renaming = session }; Button("删除记录…",role:.destructive) { deleting = session } }
                         .help(session.title)
                 }
-            }.listStyle(.sidebar).disabled(store.busy)
+            }.listStyle(.inset).scrollContentBackground(.hidden).disabled(store.busy)
             HStack { Circle().fill(store.engine.selected?.running == true ? Color.orange:Color.green).frame(width:7,height:7); Text(store.captureEnabled ? "离线界面预览 · 示例数据":store.engine.connectionLabel).font(.caption); Spacer(); Text("Intel").font(.caption2).foregroundStyle(.secondary) }.padding(10).background(Color.secondary.opacity(0.08),in:RoundedRectangle(cornerRadius:10))
         }.padding(.horizontal,14).padding(.bottom,12)
     }

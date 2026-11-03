@@ -40,7 +40,6 @@ import AGYMacCore
     var body: some View {
         ScrollView {
             VStack(alignment:.leading,spacing:20) {
-                Text("配置与额度").font(.title2.weight(.semibold))
                 GroupBox("模型与任务") { VStack(alignment:.leading,spacing:12) {
                     LabeledContent("模型",value:store.engine.families.first { $0.id == store.engine.settings.model }?.name ?? "尚未连接")
                     LabeledContent("思考强度",value:FileRules.effort(store.engine.settings.effort))
@@ -56,6 +55,7 @@ import AGYMacCore
                 Text("AGY · Mac 1.0 beta · Intel x86_64 · macOS 13+").font(.caption).foregroundStyle(.secondary)
             }.frame(maxWidth:820,alignment:.leading).padding(24).frame(maxWidth:.infinity)
         }
+        .preferredColorScheme(store.colorScheme)
         .sheet(isPresented:$network) { NetworkView().environmentObject(store) }
         .sheet(isPresented:$tasks) { TaskOptionsView().environmentObject(store) }
         .sheet(isPresented:$project) { FilesView(picking:true,project:true).environmentObject(store).frame(width:700,height:600).padding(20) }

@@ -19,7 +19,7 @@ enum WorkflowCatalog {
     var body: some View {
         ScrollView {
             VStack(alignment:.leading,spacing:20) {
-                HStack { Text("技能与工作流").font(.title2.weight(.semibold)); Spacer(); Button { adding = true } label: { Label("自定义技能",systemImage:"plus") } }
+                HStack { Text("快捷工作流与项目技能").font(.callout).foregroundStyle(.secondary); Spacer(); Button { adding = true } label: { Label("自定义技能",systemImage:"plus") } }
                 Text("选择后插入输入框，由你确认发送。命令和技能的实际执行能力以服务器 AGY 为准。").font(.callout).foregroundStyle(.secondary)
                 GroupBox("快捷工作流") { LazyVGrid(columns:[GridItem(.flexible()),GridItem(.flexible())],alignment:.leading,spacing:10) {
                     ForEach(WorkflowCatalog.items) { skill in Button { apply(skill) } label: { HStack { Text(skill.name); Spacer(); Image(systemName:"arrow.up.left") }.padding(9) }.buttonStyle(.bordered) }
