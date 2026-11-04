@@ -114,7 +114,7 @@ private struct BuildDispatch: Decodable { let job: BuildJob?; let lease: String?
                     attachments.append(try await api.upload(upload,sessionID:job.sessionID))
                 } catch { errors.append(name+": "+error.localizedDescription) }
             }
-            let result: JSONValue = .object(["exitCode":.number(Double(local.exitCode ?? -1)),"log":.string(String(local.log.suffix(80000))),"attachments":.array(attachments.map { .string($0.id) }),"artifactPaths":.array(attachments.compactMap { $0.path }.map { .string($0) }),"artifactErrors":.array(errors.map { .string($0) })])
+            let result: JSONValue = .object(["exitCode":.number(Double(local.exitCode ?? -1)),"log":.string(String(local.log.suffix(12000))),"attachments":.array(attachments.map { .string($0.id) }),"artifactPaths":.array(attachments.compactMap { $0.path }.map { .string($0) }),"artifactErrors":.array(errors.map { .string($0) })])
             HybridVerification.trace("upload complete"); try await pulse(job.id,lease:lease,api:api,result:result)
             status = "AI 构建结果已回传 · 退出码 \(local.exitCode ?? -1)"
         } catch {

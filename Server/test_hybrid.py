@@ -74,3 +74,36 @@ class HybridTests(unittest.TestCase):
         self.b.finish(self.token)
         p=subprocess.run([sys.executable,str(Path(__file__).with_name('device_tool.py')),'--context',str(self.context),'inspect'],capture_output=True,text=True,timeout=3)
         self.assertNotEqual(p.returncode,0)
+
+    def test_gateway_agent_invokes_build_tool_and_receives_actual_result(self):
+        from approvals import ApprovalBridge
+        self.g.review=ApprovalBridge(self.root/'review.sock',self.g.approvals_changed)
+        fake=self.root/'tool-agent'
+        fake.write_text("""#!/usr/bin/env python3
+import json,sys,shlex,subprocess
+prompt=json.loads(sys.stdin.readline())["message"]["content"]
+helper=prompt.split("run: ",1)[1].split(" inspect",1)[0]
+cap=json.loads(subprocess.check_output(shlex.split(helper)+["inspect"]))
+assert cap["devices"][0]["architecture"]=="x86_64"
+result=json.loads(subprocess.check_output(shlex.split(helper)+["build","--command","printf actual-ai-tool-result","--artifact","result.txt"]))
+assert result["result"]["exitCode"]==0
+print(json.dumps({"event":"result","result":{"status":"SUCCESS","response":result["result"]["log"]}}),flush=True)
+""")
+        fake.chmod(0o700);self.g.binary=str(fake)
+        try:
+            self.g.submit(self.sid,{'text':'build the Apple target','requestID':str(uuid.uuid4())})
+            deadline=time.monotonic()+5;dispatch=None
+            while time.monotonic()<deadline:
+                dispatch=self.b.poll(self.device)
+                if dispatch['job']:break
+                time.sleep(.02)
+            self.assertIsNotNone(dispatch['job'])
+            output=subprocess.check_output(['/bin/sh','-c',dispatch['job']['command']],cwd=self.root,text=True)
+            self.b.update(dispatch['job']['id'],{'lease':dispatch['lease'],'complete':True,'result':{'exitCode':0,'log':output,'attachments':[]}})
+            while self.g.get(self.sid)['running'] and time.monotonic()<deadline:time.sleep(.02)
+            self.assertFalse(self.g.get(self.sid)['running']);self.assertEqual(self.g.get(self.sid)['messages'][-1]['text'],'actual-ai-tool-result')
+        finally:
+            self.g.stop(self.sid)
+            deadline=time.monotonic()+2
+            while self.sid in self.g.active and time.monotonic()<deadline:time.sleep(.02)
+            self.g.review.close();self.g.review=None
