@@ -37,7 +37,12 @@ final class VisualFixture: URLProtocol {
     override func stopLoading() {}
     static let quota: [String:Any] = ["fetchedAt":1793664000,"source":"离线界面示例","groups":[["name":"Gemini 系列模型","description":"该系列模型共享额度池","buckets":[["id":"five-hour","name":"5 小时额度","window":"5h","remaining_fraction":0.72,"reset_time":"2026-11-03T08:00:00Z"],["id":"weekly","name":"每周额度","window":"weekly","remaining_fraction":0.46,"reset_time":"2026-11-09T00:00:00Z"]]]]]
     static func snapshot() -> [String:Any] {
-        let tools: [[String:Any]] = [["id":"read-1","name":"read_file","state":"completed","parameters":["path":"Sources/App.swift"],"output":"已读取应用入口。","isError":false]]
+        let tools: [[String:Any]] = [
+            ["id":"cmd-1","name":"run_command","state":"DONE","parameters":["CommandLine":"swift test --arch x86_64"],"output":"Test Suite 'All tests' passed.","isError":false],
+            ["id":"read-1","name":"read_file","state":"DONE","parameters":["Path":"/demo/AGY-Mac/Sources/App.swift"],"output":"42 lines, 1280 bytes","isError":false],
+            ["id":"edit-1","name":"edit_file","state":"DONE","parameters":["Path":"/demo/AGY-Mac/Sources/ChatView.swift","Target":"TextEditor(text:$store.text)","Replacement":"ComposerInputView(text:$store.text,\n    placeholder:\"描述任务…\",\n    isEditable:true)"],"output":"Edited file.","isError":false],
+            ["id":"write-1","name":"write_file","state":"DONE","parameters":["Path":"/demo/AGY-Mac/Sources/ChangesBar.swift","Content":"import SwiftUI\nstruct ChangesBar: View {\n    var body: some View { Text(\"Changes\") }\n}"],"output":"Created file.","isError":false]
+        ]
         let messages: [[String:Any]] = [
             ["id":"user-example","role":"user","text":"请查看项目结构，整理一个适合 Intel Mac 的原生客户端方案。","attachments":[],"tools":[],"steps":[]],
             ["id":"assistant-example","role":"assistant","text":"这是离线界面示例，用于检查真实原生窗口的排版。\n\n建议把客户端划分为三部分：\n\n**会话与工作区**：左侧切换项目和历史，右侧保留完整阅读空间。\n\n**文件与产物**：通过引用按钮选择文件或整个文件夹，下载集中放在消息底部。\n\n```swift\nstruct WorkspaceView: View {\n    var body: some View {\n        NavigationSplitView { Sidebar() } detail: { Chat() }\n    }\n}\n```\n\n模型、思考强度、审批策略分别设置，避免把不同选项混在一起。","attachments":[["id":"artifact-image","name":"品牌图标.png","mime":"image/png","size":png.count,"path":"/demo/AGY-Mac/品牌图标.png"],["id":"artifact-doc","name":"实现方案.md","mime":"text/markdown","size":2340,"path":"/demo/AGY-Mac/实现方案.md"]],"tools":tools,"steps":[["index":0,"text":"先阅读项目入口，再整理界面与工作流。","thinking":"保持平台原生习惯，让会话、文件与任务操作各自清晰。"]]]]

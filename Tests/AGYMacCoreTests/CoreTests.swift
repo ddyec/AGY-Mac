@@ -84,6 +84,27 @@ final class CoreTests: XCTestCase {
         XCTAssertEqual(try Data(contentsOf:target.appendingPathComponent("image.bin")),Data([0,255,1,127]))
         XCTAssertThrowsError(try SnapshotArchive.extract(zip,to:target))
     }
+    func testProcessSummaryAndCodexFileChangesCalculation() throws {
+        let tools: [ToolCall] = [
+            ToolCall(id:"1",name:"run_command",state:"DONE",parameters:.object(["CommandLine":.string("uname -a")]),output:"Darwin",isError:false),
+            ToolCall(id:"2",name:"read_file",state:"DONE",parameters:.object(["Path":.string("/work/Sources/A.swift")]),output:"10 lines, 200 bytes",isError:false),
+            ToolCall(id:"3",name:"edit_file",state:"DONE",parameters:.object(["Path":.string("/work/Sources/A.swift"),"Target":.string("let a = 1\nlet b = 2"),"Replacement":.string("let a = 1\nlet b = 20\nlet c = 30")]),output:"",isError:false),
+            ToolCall(id:"4",name:"write_file",state:"DONE",parameters:.object(["Path":.string("/work/Sources/B.swift"),"Content":.string("import Foundation\nstruct B {}\n")]),output:"",isError:false)
+        ]
+        let msg = ChatMessage(id:"m1",role:"assistant",text:"已完成修改。",attachments:nil,tools:tools,steps:[ResponseStep(index:0,text:"先检查代码",thinking:"分析结构")])
+        let process = RemoteLinks.processSummary(for:msg,cwd:"/work")
+        XCTAssertEqual(process.commandCount,1)
+        XCTAssertEqual(process.writtenFileCount,2)
+        XCTAssertEqual(process.readFileCount,1)
+        XCTAssertEqual(process.headerTitle,"思考摘要 · 运行了 1 次指令 · 写入了 2 个文件 · 读取了 1 个文件")
+
+        let changes = RemoteLinks.sessionChanges([msg],cwd:"/work")
+        XCTAssertEqual(changes.totalCount,2)
+        XCTAssertEqual(changes.completedCount,2)
+        XCTAssertEqual(changes.statusText,"2 / 2 个文件已修改")
+        XCTAssertEqual(changes.totalAdded,5)
+        XCTAssertEqual(changes.totalRemoved,1)
+    }
     private func zip(_ files: [(String,Int)]) -> Data {
         func n(_ value: Int,_ size: Int) -> Data { Data((0..<size).map { UInt8(truncatingIfNeeded:value >> ($0*8)) }) }
         func append(_ fields: [(Int,Int)], to data: inout Data) { for field in fields { data.append(n(field.0,field.1)) } }

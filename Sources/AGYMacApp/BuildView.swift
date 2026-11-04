@@ -19,7 +19,15 @@ import AGYMacCore
                         Toggle("允许 AI 在这台 Mac 上构建",isOn:Binding(get:{store.engine.profile.aiBuildsEnabled != false},set:{ enabled in store.run { try store.engine.setAIBuilds(enabled); if !enabled { worker.stop() } else if let sid = store.engine.selected?.id { try await worker.prepare(sid,store:store) } } }))
                         Label(worker.status,systemImage:worker.executing ? "gearshape.2":"desktopcomputer").foregroundStyle(.secondary)
                         if !worker.tools.isEmpty { Text("已探测工具："+worker.tools.joined(separator:" · ")).font(.caption).foregroundStyle(.secondary) }
-                        Text("源码自动同步到新副本；日志、退出码和指定产物自动回传当前对话，AI 可根据错误继续修复。Restriction 模式按策略审批，Turbo 模式直接执行。应用需保持运行并联网。").font(.caption).foregroundStyle(.secondary)
+                        if !worker.localOutputs.isEmpty {
+                            HStack(spacing:10) {
+                                Image(systemName:"checkmark.seal.fill").foregroundStyle(.green)
+                                Text("最新本机产物（\(worker.localOutputs.map(\.lastPathComponent).joined(separator:"、"))）已直接保存在本机 ~/Downloads/AGY-Builds").font(.caption)
+                                Spacer()
+                                Button("在 Finder 中显示") { NSWorkspace.shared.activateFileViewerSelecting(worker.localOutputs) }.controlSize(.small)
+                            }.padding(8).background(Color.green.opacity(0.08),in:RoundedRectangle(cornerRadius:8))
+                        }
+                        Text("源码自动同步到本机新副本；构建产物直接保存在本机 ~/Downloads/AGY-Builds，无需从服务器重复下载。Restriction 模式按策略审批，Turbo 模式直接执行。").font(.caption).foregroundStyle(.secondary)
                     }.frame(maxWidth:.infinity,alignment:.leading).padding(12)
                 }
                 DisclosureGroup("高级：手动执行与诊断") { VStack(alignment:.leading,spacing:20) {

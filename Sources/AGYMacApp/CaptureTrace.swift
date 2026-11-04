@@ -24,9 +24,9 @@ import Combine
         let store = MacStore(); self.store = store
         let controller = NSHostingController(rootView:RootView().environmentObject(store))
         let window = NSWindow(contentViewController:controller)
-        window.title = "AGY · Mac"; window.styleMask = [.titled,.closable,.miniaturizable,.resizable]
-        window.isOpaque = true; window.backgroundColor = .windowBackgroundColor; window.titleVisibility = .hidden; window.titlebarAppearsTransparent = false; window.toolbarStyle = .unifiedCompact
-        window.setContentSize(NSSize(width:1220,height:820)); window.minSize = NSSize(width:800,height:600)
+        window.title = "AGY · Mac"; window.styleMask = [.titled,.closable,.miniaturizable,.resizable,.fullSizeContentView]
+        window.isOpaque = true; window.backgroundColor = .windowBackgroundColor; window.titleVisibility = .hidden; window.titlebarAppearsTransparent = true
+        window.setContentSize(NSSize(width:1220,height:820)); window.minSize = NSSize(width:840,height:600)
         window.isReleasedWhenClosed = false; self.window = window
         appearanceObserver = store.objectWillChange.sink { [weak self] _ in DispatchQueue.main.async { self?.updateAppearance() } }
         updateAppearance()
@@ -43,17 +43,38 @@ import Combine
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
     func applicationWillTerminate(_ notification: Notification) { store?.hybridWorker.stop(); store?.localBuild.stop() }
     private func installMenu() {
-        let main = NSMenu(), app = NSMenu(), file = NSMenu(), navigation = NSMenu(), windows = NSMenu()
+        let main = NSMenu(), app = NSMenu(), file = NSMenu(), edit = NSMenu(title:"编辑"), navigation = NSMenu(title:"AGY"), windows = NSMenu(title:"窗口")
         let appItem = NSMenuItem(); appItem.submenu = app; main.addItem(appItem)
         app.addItem(item("关于 AGY · Mac",#selector(about),"")); app.addItem(.separator())
         app.addItem(item("设置…",#selector(openSettings),",")); app.addItem(.separator())
+        app.addItem(NSMenuItem(title:"隐藏 AGY · Mac",action:#selector(NSApplication.hide(_:)),keyEquivalent:"h"))
         app.addItem(NSMenuItem(title:"退出 AGY · Mac",action:#selector(NSApplication.terminate(_:)),keyEquivalent:"q"))
+
         let fileItem = NSMenuItem(title:"文件",action:nil,keyEquivalent:""); fileItem.submenu = file; main.addItem(fileItem)
-        file.addItem(item("新建对话",#selector(newConversation),"n")); file.addItem(item("文件与产物",#selector(showFiles),"2"))
+        file.addItem(item("新建对话",#selector(newConversation),"n"))
+        file.addItem(item("文件与产物",#selector(showFiles),"2"))
+        file.addItem(.separator())
+        file.addItem(NSMenuItem(title:"关闭窗口",action:#selector(NSWindow.performClose(_:)),keyEquivalent:"w"))
+
+        let editItem = NSMenuItem(title:"编辑",action:nil,keyEquivalent:""); editItem.submenu = edit; main.addItem(editItem)
+        edit.addItem(NSMenuItem(title:"撤销",action:Selector(("undo:")),keyEquivalent:"z"))
+        let redo = NSMenuItem(title:"重做",action:Selector(("redo:")),keyEquivalent:"Z")
+        redo.keyEquivalentModifierMask = [.command,.shift]
+        edit.addItem(redo)
+        edit.addItem(.separator())
+        edit.addItem(NSMenuItem(title:"剪切",action:#selector(NSText.cut(_:)),keyEquivalent:"x"))
+        edit.addItem(NSMenuItem(title:"拷贝",action:#selector(NSText.copy(_:)),keyEquivalent:"c"))
+        edit.addItem(NSMenuItem(title:"粘贴",action:#selector(NSText.paste(_:)),keyEquivalent:"v"))
+        edit.addItem(NSMenuItem(title:"删除",action:#selector(NSText.delete(_:)),keyEquivalent:""))
+        edit.addItem(.separator())
+        edit.addItem(NSMenuItem(title:"全选",action:#selector(NSText.selectAll(_:)),keyEquivalent:"a"))
+
         let navigationItem = NSMenuItem(title:"AGY",action:nil,keyEquivalent:""); navigationItem.submenu = navigation; main.addItem(navigationItem)
         navigation.addItem(item("模型与任务配置…",#selector(taskOptions),"k")); navigation.addItem(item("刷新会话",#selector(refresh),"r")); navigation.addItem(item("停止本机构建",#selector(stopBuild),"."))
         let windowItem = NSMenuItem(title:"窗口",action:nil,keyEquivalent:""); windowItem.submenu = windows; main.addItem(windowItem)
-        windows.addItem(NSMenuItem(title:"最小化",action:#selector(NSWindow.performMiniaturize(_:)),keyEquivalent:"m")); NSApp.mainMenu = main; NSApp.windowsMenu = windows
+        windows.addItem(NSMenuItem(title:"最小化",action:#selector(NSWindow.performMiniaturize(_:)),keyEquivalent:"m"))
+        windows.addItem(NSMenuItem(title:"缩放",action:#selector(NSWindow.performZoom(_:)),keyEquivalent:""))
+        NSApp.mainMenu = main; NSApp.windowsMenu = windows
     }
     private func item(_ title: String,_ action: Selector,_ key: String) -> NSMenuItem { let item = NSMenuItem(title:title,action:action,keyEquivalent:key); item.target = self; return item }
     @objc private func newConversation() { guard let store,store.connected else { return }; store.run { try await store.newConversation() } }

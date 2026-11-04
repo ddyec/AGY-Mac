@@ -70,5 +70,27 @@ final class Keychain {
         try data.write(to:target,options:.atomic)
     }
     static func paste(_ text: String) { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(text,forType:.string) }
+    static func clipboardMediaURLs() -> [URL] {
+        let board = NSPasteboard.general
+        if let urls = board.readObjects(forClasses:[NSURL.self],options:[.urlReadingFileURLsOnly:true]) as? [URL], !urls.isEmpty {
+            return urls
+        }
+        if let png = board.data(forType:.png) ?? board.data(forType:.tiff).flatMap({ NSBitmapImageRep(data:$0)?.representation(using:.png,properties:[:]) }) ?? NSImage(pasteboard:board)?.tiffRepresentation.flatMap({ NSBitmapImageRep(data:$0)?.representation(using:.png,properties:[:]) }) {
+            let folder = FileManager.default.temporaryDirectory.appendingPathComponent("AGY-Mac-Clipboard",isDirectory:true)
+            try? FileManager.default.createDirectory(at:folder,withIntermediateDirectories:true,attributes:[.posixPermissions:0o700])
+            let formatter = DateFormatter(); formatter.dateFormat = "HHmmss"
+            let file = folder.appendingPathComponent("剪贴板图片-\(formatter.string(from:Date()))-\(UUID().uuidString.prefix(4)).png")
+            if (try? png.write(to:file,options:.atomic)) != nil { return [file] }
+        }
+        if let raw = board.string(forType:.string)?.trimmingCharacters(in:.whitespacesAndNewlines), !raw.contains("\n") {
+            if let url = URL(string:raw), url.isFileURL, FileRules.isImage(url.path), FileManager.default.fileExists(atPath:url.path) {
+                return [url]
+            }
+            if raw.hasPrefix("/"), FileRules.isImage(raw), FileManager.default.fileExists(atPath:raw) {
+                return [URL(fileURLWithPath:raw)]
+            }
+        }
+        return []
+    }
 }
 #endif

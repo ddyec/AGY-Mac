@@ -30,14 +30,18 @@ fi
 export MACOSX_DEPLOYMENT_TARGET=13.0
 AGY_BUILD_ARGS=(--package-path "$AGY_PROJECT" --scratch-path "$AGY_CACHE/build" --configuration release --arch x86_64)
 echo '正在为 Intel Mac 编译原生界面与核心逻辑…'
-/usr/bin/xcrun swift test "${AGY_BUILD_ARGS[@]}" 2>&1 | tee -a "$AGY_LOG"
+if [[ -d "$(/usr/bin/xcode-select -p)/Platforms/MacOSX.platform/Developer/Library/Frameworks/XCTest.framework" ]]; then
+    /usr/bin/xcrun swift test "${AGY_BUILD_ARGS[@]}" 2>&1 | tee -a "$AGY_LOG"
+else
+    echo '当前为 Apple Command Line Tools 环境（不含 XCTest.framework），直接执行 Release 原生编译…' | tee -a "$AGY_LOG"
+fi
 /usr/bin/xcrun swift build "${AGY_BUILD_ARGS[@]}" --product AGY-Mac -Xlinker -rpath -Xlinker '@executable_path/../Frameworks' 2>&1 | tee -a "$AGY_LOG"
 AGY_BIN="$(/usr/bin/xcrun swift build "${AGY_BUILD_ARGS[@]}" --show-bin-path)"
 AGY_EXE="$AGY_BIN/AGY-Mac"
 if [[ "$(/usr/bin/lipo -archs "$AGY_EXE")" != x86_64 ]]; then echo '产物架构不是纯 x86_64，已停止。'; exit 1; fi
 AGY_APP="$AGY_OUTPUT/AGY-Mac.app"
 AGY_RESOURCES="$AGY_APP/Contents/Resources"
-mkdir -p "$AGY_APP/Contents/MacOS" "$AGY_RESOURCES" "$AGY_APP/Contents/Frameworks"
+mkdir -p "$AGY_APP/Contents/MacOS" "$AGY_RESOURCES" "$AGY_APP/Contents/Frameworks" "$AGY_RESOURCES/zh-Hans.lproj" "$AGY_RESOURCES/zh_CN.lproj"
 cp "$AGY_EXE" "$AGY_APP/Contents/MacOS/AGY-Mac"
 cp "$AGY_PROJECT/Info.plist" "$AGY_APP/Contents/Info.plist"
 cp "$AGY_PROJECT/Brand/Mark.png" "$AGY_RESOURCES/Mark.png"
@@ -61,7 +65,12 @@ AGY_ZIP="$AGY_OUTPUT/AGY-Mac-$AGY_VERSION-macos-x86_64.zip"
 /usr/bin/shasum -a 256 "$AGY_ZIP" >"$AGY_OUTPUT/SHA256SUMS.txt"
 printf '{"architecture":"x86_64","minimumMacOS":"13.0","builtOnMac":true,"nativeUIVisuallyVerified":false}\n' >"$AGY_OUTPUT/build-report.json"
 if [[ -n "${GITHUB_OUTPUT:-}" ]]; then printf 'app=%s\nzip=%s\noutput=%s\n' "$AGY_APP" "$AGY_ZIP" "$AGY_OUTPUT" >>"$GITHUB_OUTPUT"; fi
+mkdir -p "$HOME/Downloads/AGY-Builds" "$HOME/Library/Application Support/AGY-Mac/Builds/Latest"
+rm -rf "$HOME/Downloads/AGY-Builds/AGY-Mac.app" "$HOME/Library/Application Support/AGY-Mac/Builds/Latest/AGY-Mac.app"
+cp -R "$AGY_APP" "$HOME/Downloads/AGY-Builds/AGY-Mac.app"
+cp -R "$AGY_APP" "$HOME/Library/Application Support/AGY-Mac/Builds/Latest/AGY-Mac.app"
 echo "Intel Mac 应用已生成：$AGY_APP"
+echo "本机快捷包已同步：$HOME/Downloads/AGY-Builds/AGY-Mac.app"
 echo "运行包：$AGY_ZIP"
 echo '现在启动新版。首次填写与 iPhone / PC 相同的服务器地址和连接密钥。'
 if [[ "${AGY_MAC_NO_LAUNCH:-0}" != 1 ]]; then

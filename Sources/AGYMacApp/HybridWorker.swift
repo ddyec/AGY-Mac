@@ -11,6 +11,8 @@ private struct BuildDispatch: Decodable { let job: BuildJob?; let lease: String?
     @Published var status = "连接后自动探测编译环境"
     @Published var tools: [String] = []
     @Published var executing = false
+    @Published var localOutputs: [URL] = []
+    @Published var localOutputFolder: URL?
     private var task: Task<Void,Never>?
     private var client: GatewayClient?
     private var scope = "", account = "", device = UUID().uuidString.lowercased()
@@ -97,26 +99,42 @@ private struct BuildDispatch: Decodable { let job: BuildJob?; let lease: String?
                 try? await Task.sleep(nanoseconds:200_000_000)
             }
             guard !Task.isCancelled, !leaseLost else { throw CancellationError() }
-            status = "正在自动回传构建日志与产物…"; HybridVerification.trace("process exited: \(local.exitCode ?? -1)")
+            status = "正在整理本机产物与构建结果…"; HybridVerification.trace("process exited: \(local.exitCode ?? -1)")
             var attachments: [Attachment] = []
-            if let logURL = local.outputLogURL { attachments.append(try await api.upload(logURL,sessionID:job.sessionID)) }
+            if HybridVerification.enabled, let logURL = local.outputLogURL {
+                attachments.append(try await api.upload(logURL,sessionID:job.sessionID))
+            }
+            let downloadsBase = (FileManager.default.urls(for:.downloadsDirectory,in:.userDomainMask).first ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Downloads")).appendingPathComponent("AGY-Builds",isDirectory:true)
+            try? FileManager.default.createDirectory(at:downloadsBase,withIntermediateDirectories:true)
+            var savedLocal: [URL] = []
             var errors: [String] = []
             for name in job.artifacts {
                 do {
                     let path = try Self.confined(name,root:base)
                     try Self.checkLinks(path,root:base)
-                    var upload = path
-                    if (try path.resourceValues(forKeys:[.isDirectoryKey])).isDirectory == true {
-                        let out = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString+"-"+path.lastPathComponent+".zip")
-                        try await Self.archive(path,to:out); upload = out
+                    let dest = downloadsBase.appendingPathComponent(path.lastPathComponent)
+                    try? FileManager.default.removeItem(at:dest)
+                    try FileManager.default.copyItem(at:path,to:dest)
+                    savedLocal.append(dest)
+                    if HybridVerification.enabled {
+                        var upload = path
+                        if (try path.resourceValues(forKeys:[.isDirectoryKey])).isDirectory == true {
+                            let out = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString+"-"+path.lastPathComponent+".zip")
+                            try await Self.archive(path,to:out); upload = out
+                        }
+                        defer { if upload != path { try? FileManager.default.removeItem(at:upload) } }
+                        attachments.append(try await api.upload(upload,sessionID:job.sessionID))
                     }
-                    defer { if upload != path { try? FileManager.default.removeItem(at:upload) } }
-                    attachments.append(try await api.upload(upload,sessionID:job.sessionID))
                 } catch { errors.append(name+": "+error.localizedDescription) }
             }
-            let result: JSONValue = .object(["exitCode":.number(Double(local.exitCode ?? -1)),"log":.string(String(local.log.suffix(12000))),"attachments":.array(attachments.map { .string($0.id) }),"artifactPaths":.array(attachments.compactMap { $0.path }.map { .string($0) }),"artifactErrors":.array(errors.map { .string($0) })])
+            if !savedLocal.isEmpty {
+                localOutputs = savedLocal
+                localOutputFolder = downloadsBase
+            }
+            let reportedPaths = HybridVerification.enabled ? attachments.compactMap { $0.path } : savedLocal.map { $0.path }
+            let result: JSONValue = .object(["exitCode":.number(Double(local.exitCode ?? -1)),"log":.string(String(local.log.suffix(12000))),"attachments":.array(attachments.map { .string($0.id) }),"artifactPaths":.array(reportedPaths.map { .string($0) }),"artifactErrors":.array(errors.map { .string($0) })])
             HybridVerification.trace("upload complete"); try await pulse(job.id,lease:lease,api:api,result:result)
-            status = "AI 构建结果已回传 · 退出码 \(local.exitCode ?? -1)"
+            status = savedLocal.isEmpty ? "AI 本机构建完成 · 退出码 \(local.exitCode ?? -1)" : "AI 本机构建完成 · 产物已存至 ~/Downloads/AGY-Builds"
         } catch {
             HybridVerification.trace("execution failed: "+error.localizedDescription); local.stop()
             if !leaseLost, !Task.isCancelled {

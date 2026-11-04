@@ -18,6 +18,13 @@
 	<string>3</string>
 	<key>CFBundleIconFile</key>
 	<string>AppIcon</string>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>zh-Hans</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>zh-Hans</string>
+		<string>zh_CN</string>
+	</array>
 	<key>LSMinimumSystemVersion</key>
 	<string>13.0</string>
 	<key>LSArchitecturePriority</key>

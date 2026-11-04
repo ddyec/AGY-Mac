@@ -96,7 +96,9 @@ import Foundation
     public func select(_ id: String) async throws {
         if let pending, pending.sessionID != id { throw MacError.message("请先核对待确认发送，再切换会话。") }
         let token = UUID(), key = scope; selectionEpoch = token; watch?.cancel()
-        if let cached = sessionCache[id] { selected = cached; settings = settingsFor(cached); notify() }
+        if let cached = sessionCache[id] ?? sessions.first(where: { $0.id == id }) {
+            selected = cached; settings = settingsFor(cached); notify()
+        }
         let value: Session = try await api().json("sessions/\(try GatewayClient.id(id))")
         guard key == scope, token == selectionEpoch else { return }
         selected = value; settings = settingsFor(value); sessionCache[id] = value; try reconcile(value); notify(); startWatch(id)
@@ -208,9 +210,11 @@ import Foundation
         if scope != "workspace" { return FileListing(root:"",path:"",entries:[]) }
         return try await api().json("workspace",query:["cwd":root ?? settings.workspace,"path":path])
     }
-    public func upload(_ url: URL, reference: Bool = true) async throws {
+    @discardableResult
+    public func upload(_ url: URL, reference: Bool = true) async throws -> Attachment {
         try await verify(); let id = try await ensureSession(); let item = try await api().upload(url,sessionID:id)
         if reference, selected?.id == id, let path = item.path { try addReference(FileReference(path:path,label:"上传/" + item.name,directory:false)) }
+        return item
     }
     public func download(_ path: String, sessionID: String? = nil, snapshot: Bool = false) async throws -> URL {
         try await verify(); let id: String

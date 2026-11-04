@@ -77,6 +77,7 @@ public struct TaskSettings: Codable, Equatable {
 public struct FileReference: Codable, Identifiable, Equatable {
     public let path: String; public let label: String; public let directory: Bool
     public var id: String { path }
+    public var isImage: Bool { !directory && FileRules.isImage(path) }
     public init(path: String, label: String, directory: Bool) { self.path = path; self.label = label; self.directory = directory }
 }
 public struct Draft: Codable { public var text = ""; public var references: [FileReference] = []; public init() {} }
@@ -127,4 +128,7 @@ public enum FileRules {
         return name.isEmpty || [".", ".."].contains(name) ? "download" : String(name.prefix(180))
     }
     public static func effort(_ value: String) -> String { ["low":"低", "medium":"中", "high":"高", "xhigh":"更高", "max":"最高", "":"默认"][value] ?? value }
+    public static func isImage(_ value: String) -> Bool {
+        ["png", "jpg", "jpeg", "webp", "gif", "heic", "tiff", "bmp"].contains((value as NSString).pathExtension.lowercased())
+    }
 }
