@@ -21,3 +21,11 @@
 ## 配置与额度
 
 ![原生设置页](screenshots/settings-dark.png)
+
+## beta.3：AI 自动混合构建
+
+已查看 [Intel 原生运行 41811811946](https://github.com/ddyec/AGY-Mac/actions/runs/41811811946) 的浅/深色构建页。默认展示 AI 自动调度开关、在线状态和工具链，手动命令收进高级诊断区。此运行也在真实 Intel Mac 上通过自动领取、解压、进程执行、日志/产物上传与结果回传的离线验证。
+
+![AI 自动构建 · 浅色](screenshots/ai-build-light.png)
+
+![AI 自动构建 · 深色](screenshots/ai-build-dark.png)
