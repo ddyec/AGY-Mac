@@ -374,7 +374,7 @@ class Gateway:
                                                   "artifactReviewPolicy": "always-proceed", "enableTerminalSandbox": False})]
             build_token, context_file = self.hybrid.begin(sid, run_token)
             helper = shlex.quote(sys.executable) + " " + shlex.quote(str(Path(__file__).with_name("device_tool.py").resolve())) + " --context " + shlex.quote(str(context_file))
-            prompt += "\n\n[Connected build execution capability]\nFor build/test/package tasks first inspect project manifests and run: " + helper + " inspect\nWeb/server/Linux work should use your server terminal. For macOS/Apple targets, automatically dispatch the online Intel Mac with: " + helper + " build --command '<actual command>' --subdirectory '<project-relative directory>' --artifact '<project-relative output>' (repeat --artifact for outputs). No manual build panel action is needed. This snapshots the current server project to a fresh Mac copy, executes, then returns exit status, log and uploaded artifact paths to this tool call. Set a long terminal wait or poll your terminal operation until complete. On failure read the real log, fix source on server and dispatch a fresh build. If no Mac/toolchain is online report that; never pretend a Linux build validates Apple UI. Treat unknown/disconnected execution as unknown; never automatically retry it. Approval policy still applies. Do not use old context paths from earlier turns. The command executes outside a sandbox on the connected Mac.\n"
+            prompt += "\n\n[Connected build execution capability]\nFor build/test/package tasks first inspect project manifests and run: " + helper + " inspect\nWeb/server/Linux work should use your server terminal. For macOS/Apple targets, automatically dispatch the online Intel Mac with: " + helper + " build --command '<actual command>' --subdirectory '<project directory relative to session workspace>' --artifact '<output relative to that project directory>' (repeat --artifact for outputs). No manual build panel action is needed. This snapshots the current server project to a fresh Mac copy, executes, then returns exit status, log and uploaded artifact paths to this tool call. Set a long terminal wait or poll your terminal operation until complete. On failure read the real log, fix source on server and dispatch a fresh build. If no Mac/toolchain is online report that; never pretend a Linux build validates Apple UI. Treat unknown/disconnected execution as unknown; never automatically retry it. Approval policy still applies. Do not use old context paths from earlier turns. The command executes outside a sandbox on the connected Mac.\n"
             if s["conversationID"]:
                 args += ["--conversation", s["conversationID"]]
             with self.lock:
@@ -750,7 +750,10 @@ class Handler(BaseHTTPRequestHandler):
             if artifact and self.command == "GET":
                 live_build = False
                 if artifact[2] == "snapshot" and query.get("build"):
-                    try: gateway.hybrid.authorize_snapshot(artifact[1], query["build"][0], query.get("lease",[""])[0]); live_build = True
+                    try:
+                        subtree = gateway.hybrid.authorize_snapshot(artifact[1], query["build"][0], query.get("lease",[""])[0])
+                        if Path(query.get("path",[""])[0] or ".") != Path(subtree): raise HybridError("Snapshot path differs from approved build project")
+                        live_build = True
                     except HybridError as error: raise Failure(409,str(error))
                 stream, name, size = (gateway.project_snapshot(artifact[1], query.get("path", [""])[0],allow_running=live_build) if artifact[2] == "snapshot" else gateway.open_file(artifact[1], query.get("path", [""])[0]))
                 with stream:

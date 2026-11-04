@@ -48,6 +48,12 @@ import AGYMacCore
         let descendants = childProcesses(process.processIdentifier,depth:0)
         for child in descendants.reversed() { if child > 1 { _ = Darwin.kill(child,SIGTERM) } }
         process.terminate()
+        Task { [weak self] in
+            try? await Task.sleep(nanoseconds:3_000_000_000)
+            guard let self, self.process === process, process.isRunning else { return }
+            for child in self.childProcesses(process.processIdentifier,depth:0).reversed() { if child > 1 { _ = Darwin.kill(child,SIGKILL) } }
+            _ = Darwin.kill(process.processIdentifier,SIGKILL)
+        }
     }
     private func childProcesses(_ pid: Int32, depth: Int) -> [Int32] {
         guard depth < 16 else { return [] }

@@ -19,6 +19,10 @@ private struct BuildDispatch: Decodable { let job: BuildJob?; let lease: String?
     private var leaseLost = false
     private var detected = false
     deinit { task?.cancel() }
+    func preview() {
+        guard ProcessInfo.processInfo.arguments.contains("--capture-ui") else { return }
+        status = "AI 自动构建就绪 · 离线示例"; tools = ["swift","xcodebuild","clang","node"]
+    }
     func stop() {
         task?.cancel(); task = nil
         if executing { local?.stop() }
@@ -78,22 +82,22 @@ private struct BuildDispatch: Decodable { let job: BuildJob?; let lease: String?
         defer { heartbeat.cancel(); executing = false }
         do {
             guard !local.running else { throw MacError.message("本机命令正在运行，未重复执行。") }
-            status = "AI 正在同步项目…"
-            let snapshot = try await api.download("",sessionID:job.sessionID,snapshot:true,buildID:job.id,lease:lease)
+            status = "AI 正在同步项目…"; HybridVerification.trace("snapshot begin")
+            let snapshot = try await api.download(job.subdirectory,sessionID:job.sessionID,snapshot:true,buildID:job.id,lease:lease)
             defer { try? FileManager.default.removeItem(at:snapshot) }
             let base = FileManager.default.urls(for:.applicationSupportDirectory,in:.userDomainMask)[0].appendingPathComponent("AGY-Mac/Workspaces/AI-"+job.id,isDirectory:true)
             let bytes = try Data(contentsOf:snapshot)
             try await Task.detached { try SnapshotArchive.extract(bytes,to:base) }.value
             guard !Task.isCancelled, !leaseLost, Date().timeIntervalSince1970 < job.deadline else { throw CancellationError() }
-            let cwd = try Self.confined(job.subdirectory,root:base)
+            HybridVerification.trace("snapshot extracted"); let cwd = base
             local.folder = cwd.path; local.command = job.command; status = "AI 正在 Intel Mac 上构建…"
-            try local.start()
+            try local.start(); HybridVerification.trace("process started")
             while local.running {
                 if Task.isCancelled || leaseLost || Date().timeIntervalSince1970 >= job.deadline { local.stop() }
                 try? await Task.sleep(nanoseconds:200_000_000)
             }
             guard !Task.isCancelled, !leaseLost else { throw CancellationError() }
-            status = "正在自动回传构建日志与产物…"
+            status = "正在自动回传构建日志与产物…"; HybridVerification.trace("process exited: \(local.exitCode ?? -1)")
             var attachments: [Attachment] = []
             if let logURL = local.outputLogURL { attachments.append(try await api.upload(logURL,sessionID:job.sessionID)) }
             var errors: [String] = []
@@ -111,10 +115,10 @@ private struct BuildDispatch: Decodable { let job: BuildJob?; let lease: String?
                 } catch { errors.append(name+": "+error.localizedDescription) }
             }
             let result: JSONValue = .object(["exitCode":.number(Double(local.exitCode ?? -1)),"log":.string(String(local.log.suffix(80000))),"attachments":.array(attachments.map { .string($0.id) }),"artifactPaths":.array(attachments.compactMap { $0.path }.map { .string($0) }),"artifactErrors":.array(errors.map { .string($0) })])
-            try await pulse(job.id,lease:lease,api:api,result:result)
+            HybridVerification.trace("upload complete"); try await pulse(job.id,lease:lease,api:api,result:result)
             status = "AI 构建结果已回传 · 退出码 \(local.exitCode ?? -1)"
         } catch {
-            local.stop()
+            HybridVerification.trace("execution failed: "+error.localizedDescription); local.stop()
             if !leaseLost, !Task.isCancelled {
                 try? await pulse(job.id,lease:lease,api:api,result:.object(["error":.string(error.localizedDescription),"exitCode":.number(-1),"attachments":.array([])]))
             }

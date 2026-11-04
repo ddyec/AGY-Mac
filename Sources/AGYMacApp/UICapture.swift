@@ -57,7 +57,7 @@ import AGYMacCore
                 store.showTaskOptions = true; try await capture("model-dialog-"+theme); store.showTaskOptions = false
                 try await Task.sleep(nanoseconds:400_000_000)
                 store.page = .files; try await capture("files-"+theme)
-                store.localBuild.folder = "/Users/demo/Projects/AGY-Mac"; store.localBuild.command = "swift build -c release --arch x86_64"; store.page = .builds; try await capture("build-"+theme)
+                store.hybridWorker.preview(); store.localBuild.folder = "/Users/demo/Projects/AGY-Mac"; store.localBuild.command = "swift build -c release --arch x86_64"; store.page = .builds; try await capture("build-"+theme)
                 store.page = .settings; try await capture("settings-"+theme)
                 store.page = .skills; try await capture("skills-"+theme)
             }

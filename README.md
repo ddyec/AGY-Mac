@@ -30,7 +30,7 @@ CI 的 WindowServer 抓屏不可用时，使用已显示窗口的 AppKit `cacheD
 - 运行中的消息加入队列；也可“立即引导”先停止当前任务再发送。发送结果不明时保存原编号，先核对，或由用户明确按原编号重试。
 - 读取真实额度并显示进度；快捷工作流、自定义技能、发现项目 `.agents/skills` / `.agent/skills` 中的 `SKILL.md`。快捷工作流只是插入待确认的输入，执行能力由实际 AGY 版本决定。
 - 原生 DoH 与系统/HTTP/SOCKS5 代理设置。默认跟随系统 DNS；启用 DoH 后不静默降级为明文 DNS。系统既有加密 DNS 或 Private Relay 可能优先。
-- Intel Mac 本机构建与服务器构建分开；服务器项目同步到新本机副本，执行前展示位置和命令，按需回传日志与产物。Mac 版没有 WSL 入口。
+- AI 自动混合构建：发送任务前探测并注册 Intel Mac 工具链。AI 通过原生终端工具查询设备、按项目目标调用 Mac，自动同步新副本，运行命令并回传退出码、日志及产物；AI 可据此修复后继续构建。网页/Linux 任务用服务器原生工具。Restriction 审批展示实际 Mac 命令，Turbo 直接执行。Mac 版没有 WSL 入口。
 
 模型、额度、文件范围与审批能力以当前服务器响应为准；客户端不会编造模型、额度或执行结果。
 
@@ -45,3 +45,9 @@ swift build -c release --arch x86_64 --product AGY-Mac
 `Sources/AGYMacCore` 包含可在 Linux 验证的协议、账号隔离、草稿/待确认发送、队列、SSE、文件引用与快照逻辑。`Sources/AGYMacApp` 是真正的 macOS 原生界面，只在 macOS 分支编译。Linux 构建出的同名命令只会提示不支持 GUI，不会被打包成 Mac 应用。
 
 初版基线为 AGY-PC `c802423`（beta.10）及 AGY-iPhone `ab0f1d7`。移植差异见 [功能对照](docs/PORTING.md)，实际验证边界见 [VALIDATION.md](VALIDATION.md)。
+
+## AI 自动混合构建（beta.3）
+
+保持 Mac 应用运行并联网，正常在对话中提出任务即可。例如“把这个 SwiftUI 项目编译成 Intel Mac 应用，失败就修到通过，把运行包发给我”。客户端在发送前自动注册当前会话的设备能力；不需要去构建页点击执行。构建页现在以自动运行状态为主，手动命令收进高级诊断区。允许 AI 本机构建的设置按服务器账号保存，默认开启，可随时暂停。
+
+服务端必须同时升级为本仓库的 `Server/gateway.py`，仍可兼容原 iPhone / PC 协议。继续使用原有 `--data`、`--profile-home`、`--key-file`、`--root` 和 `--agy` 参数，不迁移或复制 Google 凭据。见 [自动构建设计与部署](docs/AI_BUILDS.md)。旧服务器会明确显示需要升级，不会冒充已经自动执行。

@@ -103,4 +103,25 @@ final class WorkspaceTests: XCTestCase {
         fixture.profile = "two"; do { try await engine.send(); XCTFail("expected account mismatch") } catch {}
         XCTAssertEqual(fixture.messagePosts,0); XCTAssertFalse(engine.connected)
     }
+    @MainActor func testDevicePreparationPrecedesTaskAndBuildPermissionIsAccountScoped() async throws {
+        let fixture = FixtureServer(), storage = MemoryStorage(); let engine = try workspace(fixture,storage)
+        let credentials = try Credentials(address:"https://fixture.test",token:String(repeating:"k",count:48))
+        try await engine.connect(credentials); try engine.setAIBuilds(false)
+        fixture.profile = "two"; try await engine.connect(credentials); XCTAssertNil(engine.profile.aiBuildsEnabled)
+        fixture.profile = "one"; try await engine.connect(credentials); XCTAssertEqual(engine.profile.aiBuildsEnabled,false)
+        var registered: String?
+        engine.beforeSubmit = { sid in XCTAssertEqual(fixture.messagePosts,0); registered = sid }
+        try engine.updateDraft("自动构建"); try await engine.send()
+        XCTAssertEqual(registered,fixture.id); XCTAssertEqual(fixture.messagePosts,1); try engine.disconnect()
+    }
+    @MainActor func testAccountSwitchDuringDevicePreparationNeverPosts() async throws {
+        let fixture = FixtureServer(), storage = MemoryStorage(); let engine = try workspace(fixture,storage)
+        let credentials = try Credentials(address:"https://fixture.test",token:String(repeating:"k",count:48))
+        try await engine.connect(credentials)
+        engine.beforeSubmit = { _ in fixture.profile = "two"; try await engine.connect(credentials) }
+        try engine.updateDraft("old account build")
+        do { try await engine.send(); XCTFail("expected changed scope") } catch {}
+        XCTAssertEqual(fixture.messagePosts,0); try engine.disconnect()
+    }
+
 }

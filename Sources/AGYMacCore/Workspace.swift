@@ -132,6 +132,7 @@ import Foundation
     public func submitPending() async throws {
         guard let pending else { return }; try storage.save(state); try await verify(); let key = scope
         try await beforeSubmit?(pending.sessionID)
+        guard key == scope else { throw MacError.message("设备探测期间账号发生变化，未发送任务。") }
         let value: Session = try await api().json("sessions/\(try GatewayClient.id(pending.sessionID))/messages",method:"POST",body:pending.body)
         guard key == scope else { return }; selected = value; sessionCache[value.id] = value; try reconcile(value); notify(); startWatch(value.id)
     }

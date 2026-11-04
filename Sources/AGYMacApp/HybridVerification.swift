@@ -11,9 +11,16 @@ enum HybridVerification {
     private static var completed: [String:Any]?
     static let jobID = "55555555-5555-4555-8555-555555555555"
     static var result: [String:Any]? { lock.lock(); defer { lock.unlock() }; return completed }
+    static func trace(_ text: String) {
+        guard enabled, let index = ProcessInfo.processInfo.arguments.firstIndex(of:"--output") else { return }
+        let file = URL(fileURLWithPath:ProcessInfo.processInfo.arguments[index+1]).appendingPathComponent("hybrid-stages.log")
+        let data = Data((Date().description+" "+text+"\n").utf8)
+        if let h = try? FileHandle(forWritingTo:file) { defer { try? h.close() }; try? h.seekToEnd(); try? h.write(contentsOf:data) } else { try? data.write(to:file) }
+    }
     static func response(_ request: URLRequest) throws -> (Data,String)? {
         guard enabled else { return nil }
         let path = request.url!.path
+        trace((request.httpMethod ?? "GET")+" "+path)
         var value: [String:Any]
         if path.hasSuffix("/device") { value = ["accountProfile":"offline-preview"] }
         else if path.hasSuffix("/poll") {
@@ -25,12 +32,20 @@ enum HybridVerification {
             let name = URLComponents(url:request.url!,resolvingAgainstBaseURL:false)?.queryItems?.first(where:{$0.name == "name"})?.value ?? "output"
             value = ["id":UUID().uuidString.lowercased(),"name":name,"mime":"text/plain","size":1,"path":"/demo/AGY-Mac/"+name]
         } else if path.contains("/builds/") {
-            if let data = request.httpBody, let body = try JSONSerialization.jsonObject(with:data) as? [String:Any], body["complete"] as? Bool == true {
-                lock.lock(); completed = body["result"] as? [String:Any]; lock.unlock()
+            if let data = bodyData(request), let body = try JSONSerialization.jsonObject(with:data) as? [String:Any], body["complete"] as? Bool == true {
+                lock.lock(); completed = body["result"] as? [String:Any]; lock.unlock(); trace("result received")
             }
             value = ["accountProfile":"offline-preview","active":true]
         } else { return nil }
         return (try JSONSerialization.data(withJSONObject:value),"application/json")
+    }
+    private static func bodyData(_ request: URLRequest) -> Data? {
+        if let data = request.httpBody { return data }
+        guard let stream = request.httpBodyStream else { return nil }
+        stream.open(); defer { stream.close() }
+        var data = Data(), bytes = [UInt8](repeating:0,count:4096)
+        while stream.hasBytesAvailable { let n = stream.read(&bytes,maxLength:bytes.count); if n <= 0 { break }; data.append(contentsOf:bytes.prefix(n)) }
+        return data
     }
     @MainActor static func run(_ store: MacStore) async {
         let args = ProcessInfo.processInfo.arguments
@@ -43,6 +58,7 @@ enum HybridVerification {
             try await store.hybridWorker.prepare(VisualFixture.sessionID,store:store)
             let deadline = Date().addingTimeInterval(60)
             while result == nil && Date() < deadline { try await Task.sleep(nanoseconds:200_000_000) }
+            trace("final result: "+String(describing:result))
             guard let result, result["exitCode"] as? Int == 0, (result["log"] as? String)?.contains("HYBRID_NATIVE_OK") == true, (result["attachments"] as? [String])?.count == 2 else { throw MacError.message("Native worker did not return successful command, log and artifact: \(store.hybridWorker.status)") }
             let output = URL(fileURLWithPath:store.localBuild.folder).appendingPathComponent("output.txt")
             guard try String(contentsOf:output).trimmingCharacters(in:.whitespacesAndNewlines) == "x86_64" else { throw MacError.message("Worker did not execute on Intel Mac") }

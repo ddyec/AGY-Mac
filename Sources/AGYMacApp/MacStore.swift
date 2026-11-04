@@ -39,7 +39,7 @@ private struct UnavailableStorage: StateStorage {
     var colorScheme: ColorScheme? { let theme = captureTheme ?? engine.profile.theme; return theme == "dark" ? .dark : theme == "light" ? .light : nil }
     init() {
         CaptureTrace.mark("store.init")
-        if captureEnabled || HybridVerification.enabled {
+        if ProcessInfo.processInfo.arguments.contains("--capture-ui") || HybridVerification.enabled {
             if let url = Bundle.main.url(forResource:"Mark",withExtension:"png") { VisualFixture.png = (try? Data(contentsOf:url)) ?? Data() }
             engine = try! Workspace(storage:PreviewStorage(),watchEnabled:false,factory:{ credentials,_ in
                 let config = URLSessionConfiguration.ephemeral; config.protocolClasses = [VisualFixture.self]; return GatewayClient(credentials:credentials,configuration:config)

@@ -116,6 +116,7 @@ class HybridBroker:
         with self.lock:
             j=self.jobs.get(jid)
             if not j or j['sessionID']!=sid or j['state']!='running' or not secrets.compare_digest(nonce,j.get('_nonce','')) or time.monotonic()>j['_lease']:raise HybridError('Snapshot lease invalid')
+            return j['subdirectory']
 
     def update(self,jid,body):
         with self.lock:
