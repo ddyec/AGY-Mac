@@ -33,7 +33,7 @@ import Combine
         installMenu(); window.center(); window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps:true)
         CaptureTrace.mark("application.windowCreated id=\(window.windowNumber)")
-        Task { await store.restore(); if store.captureEnabled { await UICapture.run(store) } }
+        Task { await store.restore(); if store.captureEnabled { await UICapture.run(store) } else if HybridVerification.enabled { await HybridVerification.run(store) } }
     }
     private func updateAppearance() {
         guard let store else { return }
@@ -41,7 +41,7 @@ import Combine
         window?.appearance = appearance; settings?.appearance = appearance
     }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
-    func applicationWillTerminate(_ notification: Notification) { store?.localBuild.stop() }
+    func applicationWillTerminate(_ notification: Notification) { store?.hybridWorker.stop(); store?.localBuild.stop() }
     private func installMenu() {
         let main = NSMenu(), app = NSMenu(), file = NSMenu(), navigation = NSMenu(), windows = NSMenu()
         let appItem = NSMenuItem(); appItem.submenu = app; main.addItem(appItem)
@@ -60,7 +60,7 @@ import Combine
     @objc private func showFiles() { if store?.connected == true { store?.page = .files } }
     @objc private func taskOptions() { if store?.connected == true { store?.showTaskOptions = true } }
     @objc private func refresh() { guard let store,store.connected else { return }; store.run { try await store.reload() } }
-    @objc private func stopBuild() { store?.localBuild.stop() }
+    @objc private func stopBuild() { store?.hybridWorker.stop(); store?.localBuild.stop() }
     @objc private func about() { NSApp.orderFrontStandardAboutPanel(nil) }
     @objc private func openSettings() {
         guard let store else { return }

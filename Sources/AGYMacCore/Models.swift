@@ -27,7 +27,7 @@ public struct ModelInfo: Codable, Identifiable { public let id: String; public l
 public struct ModelReply: Codable { public let models: [ModelInfo]; public let families: [ModelFamily] }
 public struct Capabilities: Codable {
     public let separateEffort: Bool; public let nativeApprovals: Bool
-    public var fileBrowser: Bool?; public var directoryMentions: Bool?; public var projectSnapshots: Bool?
+    public var aiHybridBuilds: Bool?; public var fileBrowser: Bool?; public var directoryMentions: Bool?; public var projectSnapshots: Bool?
 }
 public struct GatewayStatus: Codable {
     public let name: String; public let version: Int; public let roots: [String]; public let defaultModel: String; public let accountProfile: String; public let capabilities: Capabilities
@@ -95,6 +95,7 @@ public struct BuildPlan: Codable {
     public init(target: String, folder: String, command: String) { self.target = target; self.folder = folder; self.command = command }
 }
 public struct ProfileState: Codable {
+    public var aiBuildsEnabled: Bool?
     public var build: BuildPlan?
     public var settings = TaskSettings(); public var presentation = "步骤摘要"; public var theme = "system"
     public var drafts: [String: Draft] = [:]; public var queues: [String: [QueuedMessage]] = [:]; public var pending: PendingSend?; public var skills: [Skill] = []

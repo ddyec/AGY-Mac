@@ -37,7 +37,7 @@ import AGYMacCore
                         switch store.page {
                         case .chat: ChatView()
                         case .files: FilesView(picking:false,project:false)
-                        case .builds: BuildView(local:store.localBuild)
+                        case .builds: BuildView(local:store.localBuild,worker:store.hybridWorker)
                         case .skills: SkillsView()
                         case .settings: PreferencesView()
                         }

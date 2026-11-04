@@ -127,8 +127,11 @@ import Foundation
         let current = draft; guard !current.text.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty || !current.references.isEmpty else { return }
         try await verify(); let id = try await ensureSession(); var p = profile; p.pending = PendingSend(sessionID:id,draft:current); try commit(p); try await submitPending()
     }
+    public var beforeSubmit: ((String) async throws -> Void)?
+    public func setAIBuilds(_ enabled: Bool) throws { var p = profile; p.aiBuildsEnabled = enabled; try commit(p) }
     public func submitPending() async throws {
         guard let pending else { return }; try storage.save(state); try await verify(); let key = scope
+        try await beforeSubmit?(pending.sessionID)
         let value: Session = try await api().json("sessions/\(try GatewayClient.id(pending.sessionID))/messages",method:"POST",body:pending.body)
         guard key == scope else { return }; selected = value; sessionCache[value.id] = value; try reconcile(value); notify(); startWatch(value.id)
     }

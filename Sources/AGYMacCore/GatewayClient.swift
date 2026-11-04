@@ -63,8 +63,10 @@ public final class GatewayClient {
         let (data, response) = try await session.upload(for: req, fromFile: file); try validate(response, data: data)
         return try JSONDecoder().decode(Attachment.self, from: data)
     }
-    public func download(_ remote: String, sessionID: String, snapshot: Bool = false) async throws -> URL {
-        var req = try request("sessions/\(try Self.id(sessionID))/\(snapshot ? "snapshot" : "files")", query: ["path":remote])
+    public func download(_ remote: String, sessionID: String, snapshot: Bool = false, buildID: String? = nil, lease: String? = nil) async throws -> URL {
+        var query = ["path":remote]
+        if let buildID, let lease { query["build"] = try Self.id(buildID); query["lease"] = lease }
+        var req = try request("sessions/\(try Self.id(sessionID))/\(snapshot ? "snapshot" : "files")", query:query)
         req.setValue("*/*", forHTTPHeaderField: "Accept"); req.setValue("identity", forHTTPHeaderField:"Accept-Encoding")
         let (temporary, response) = try await session.download(for: req)
         do {

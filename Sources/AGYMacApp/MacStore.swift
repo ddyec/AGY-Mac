@@ -17,6 +17,7 @@ private struct UnavailableStorage: StateStorage {
     let captureEnabled = ProcessInfo.processInfo.arguments.contains("--capture-ui")
     @Published var captureTheme: String?
     let localBuild = LocalBuild()
+    let hybridWorker = HybridWorker()
     private var buildScope = ""
     let engine: Workspace
     @Published var page = Page.chat
@@ -38,7 +39,7 @@ private struct UnavailableStorage: StateStorage {
     var colorScheme: ColorScheme? { let theme = captureTheme ?? engine.profile.theme; return theme == "dark" ? .dark : theme == "light" ? .light : nil }
     init() {
         CaptureTrace.mark("store.init")
-        if ProcessInfo.processInfo.arguments.contains("--capture-ui") {
+        if captureEnabled || HybridVerification.enabled {
             if let url = Bundle.main.url(forResource:"Mark",withExtension:"png") { VisualFixture.png = (try? Data(contentsOf:url)) ?? Data() }
             engine = try! Workspace(storage:PreviewStorage(),watchEnabled:false,factory:{ credentials,_ in
                 let config = URLSessionConfiguration.ephemeral; config.protocolClasses = [VisualFixture.self]; return GatewayClient(credentials:credentials,configuration:config)
@@ -48,10 +49,12 @@ private struct UnavailableStorage: StateStorage {
             if let value { try Keychain.write(JSONEncoder().encode(value),account:"connection") } else { try Keychain.remove("connection") }
         }) } catch { engine = try! Workspace(storage:UnavailableStorage()); storageReady = false; self.error = "无法读取保存状态：\(error.localizedDescription)。原文件已保留，未覆盖。" }
         }
+        engine.beforeSubmit = { [weak self] sid in guard let self else { return }; try await self.hybridWorker.prepare(sid,store:self) }
         engine.changed = { [weak self] in self?.sync() }; CaptureTrace.mark("store.ready")
     }
     func sync() {
         objectWillChange.send()
+        if !connected || engine.profile.aiBuildsEnabled == false { hybridWorker.stop() }
         if !engine.scope.isEmpty, engine.scope != buildScope, !localBuild.running {
             buildScope = engine.scope; localBuild.reset()
             if let plan = engine.profile.build { localBuild.folder = plan.folder; localBuild.command = plan.command }
@@ -80,7 +83,7 @@ private struct UnavailableStorage: StateStorage {
         Task { defer { busy = false; sync() }; do { try flushDraft(); try await operation() } catch { if !(error is CancellationError) { self.error = error.localizedDescription } } }
     }
     func restore() async {
-        guard !restored else { return }; restored = true; if captureEnabled { return }; guard storageReady else { return }
+        guard !restored else { return }; restored = true; if captureEnabled || HybridVerification.enabled { return }; guard storageReady else { return }
         do {
             if let data = try Keychain.read("connection") { let value = try JSONDecoder().decode(Credentials.self,from:data); busy = true; defer { busy = false }; try await engine.connect(value); sync() }
         } catch { self.error = error.localizedDescription }

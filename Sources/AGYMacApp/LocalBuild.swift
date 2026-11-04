@@ -10,6 +10,8 @@ import AGYMacCore
     @Published var command = ""
     @Published var log = ""
     @Published var running = false
+    @Published private(set) var exitCode: Int32?
+    var outputLogURL: URL? { logURL }
     private var process: Process?, logURL: URL?, poll: Task<Void,Never>?
     private var offset: UInt64 = 0
     func reset() { guard !running else { return }; folder = ""; command = ""; log = ""; logURL = nil; offset = 0 }
@@ -23,13 +25,13 @@ import AGYMacCore
         try Data(header.utf8).write(to:file); try FileManager.default.setAttributes([.posixPermissions:0o600],ofItemAtPath:file.path)
         let writer = try FileHandle(forWritingTo:file); try writer.seekToEnd()
         let child = Process(); child.executableURL = URL(fileURLWithPath:"/usr/bin/arch"); child.arguments = ["-x86_64","/bin/zsh","-lc",command]; child.currentDirectoryURL = cwd; child.standardOutput = writer; child.standardError = writer
-        log = ""; offset = 0; logURL = file; running = true; process = child
+        log = ""; offset = 0; logURL = file; running = true; exitCode = nil; process = child
         child.terminationHandler = { [weak self] child in
             Task { @MainActor [weak self] in
                 guard let self else { return }; self.poll?.cancel(); self.readLog()
                 let status = "\n退出码：\(child.terminationStatus)\n"; self.log += status
                 if let handle = try? FileHandle(forWritingTo:file) { defer { try? handle.close() }; do { try handle.seekToEnd(); try handle.write(contentsOf:Data(status.utf8)) } catch {} }
-                self.running = false; self.process = nil
+                self.exitCode = child.terminationStatus; self.running = false; self.process = nil
             }
         }
         do { try child.run(); try writer.close() }

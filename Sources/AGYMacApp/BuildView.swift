@@ -5,13 +5,24 @@ import AGYMacCore
 @MainActor struct BuildView: View {
     @EnvironmentObject var store: MacStore
     @ObservedObject var local: LocalBuild
+    @ObservedObject var worker: HybridWorker
     @State private var target = "local"
     @State private var confirm = false
     @State private var loaded = false
     var body: some View {
         ScrollView {
             VStack(alignment:.leading,spacing:20) {
-                Text("Mac 项目在这台 Intel Mac 上构建，网页与服务端任务留在服务器。").foregroundStyle(.secondary)
+                GroupBox {
+                    VStack(alignment:.leading,spacing:14) {
+                        Label("由 AI 自动选择构建环境",systemImage:"sparkles").font(.title2.weight(.semibold))
+                        Text("直接在对话里提出任务。AI 会探测当前项目和在线设备：网页与 Linux 任务在服务器运行，需要 Apple 工具链的任务自动交给这台 Intel Mac。").foregroundStyle(.secondary)
+                        Toggle("允许 AI 在这台 Mac 上构建",isOn:Binding(get:{store.engine.profile.aiBuildsEnabled != false},set:{ enabled in store.run { try store.engine.setAIBuilds(enabled); if !enabled { worker.stop() } else if let sid = store.engine.selected?.id { try await worker.prepare(sid,store:store) } } }))
+                        Label(worker.status,systemImage:worker.executing ? "gearshape.2":"desktopcomputer").foregroundStyle(.secondary)
+                        if !worker.tools.isEmpty { Text("已探测工具："+worker.tools.joined(separator:" · ")).font(.caption).foregroundStyle(.secondary) }
+                        Text("源码自动同步到新副本；日志、退出码和指定产物自动回传当前对话，AI 可根据错误继续修复。Restriction 模式按策略审批，Turbo 模式直接执行。应用需保持运行并联网。").font(.caption).foregroundStyle(.secondary)
+                    }.frame(maxWidth:.infinity,alignment:.leading).padding(12)
+                }
+                DisclosureGroup("高级：手动执行与诊断") { VStack(alignment:.leading,spacing:20) {
                 GroupBox("执行位置") { VStack(alignment:.leading,spacing:14) {
                     Picker("目标",selection:$target) { Text("本机 · Intel Mac").tag("local"); Text("服务器 · 网页 / 服务端").tag("server") }.pickerStyle(.segmented)
                     if target == "local" {
@@ -29,7 +40,8 @@ import AGYMacCore
                     }
                 }.padding(12) }
                 if !local.log.isEmpty { GroupBox("本机输出") { ScrollView([.horizontal,.vertical]) { Text(local.log).font(.system(.caption,design:.monospaced)).textSelection(.enabled).frame(maxWidth:.infinity,alignment:.leading).padding(12) }.frame(height:300) } }
-                Text("项目同步总是创建新副本。构建日志和产物只会在你点击回传时上传。").font(.caption).foregroundStyle(.secondary)
+                Text("此区域用于手动诊断；对话中的 AI 自动构建无需点击这里。").font(.caption).foregroundStyle(.secondary)
+                } }
             }.frame(maxWidth:900).padding(24).frame(maxWidth:.infinity)
         }.confirmationDialog(target == "local" ? "在这台 Intel Mac 上执行？":"交给当前服务器 AGY 执行？",isPresented:$confirm,titleVisibility:.visible) {
             Button("执行这一次") { start() }; Button("取消",role:.cancel) {}

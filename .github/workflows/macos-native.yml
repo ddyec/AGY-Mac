@@ -28,6 +28,22 @@ jobs:
           AGY_MAC_OUTPUT_ROOT: ${{ runner.temp }}/agy-output
           AGY_MAC_NO_LAUNCH: '1'
         run: bash scripts/build-intel.sh
+      - name: Gateway AI dispatch integration tests
+        run: python3 -m unittest discover -s Server -q
+      - name: Execute automatic build worker on Intel Mac
+        env:
+          AGY_APP: ${{ steps.build.outputs.app }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/agy-screenshots"
+          open -n -W --stdout "$RUNNER_TEMP/agy-screenshots/hybrid.log" --stderr "$RUNNER_TEMP/agy-screenshots/hybrid-stderr.log" "$AGY_APP" --args --verify-hybrid --output "$RUNNER_TEMP/agy-screenshots" &
+          AGY_PID=$!
+          for AGY_TICK in $(seq 1 120); do
+            if ! kill -0 "$AGY_PID" 2>/dev/null; then break; fi
+            sleep 1
+          done
+          if kill -0 "$AGY_PID" 2>/dev/null; then kill "$AGY_PID"; exit 1; fi
+          wait "$AGY_PID"
+          test -f "$RUNNER_TEMP/agy-screenshots/hybrid.complete"
       - name: Launch real app and capture its UI
         env:
           AGY_APP: ${{ steps.build.outputs.app }}
